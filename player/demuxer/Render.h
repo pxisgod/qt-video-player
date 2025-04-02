@@ -4,13 +4,15 @@
 #include "util/common.h"
 #include <memory>
 #include <thread>
+#include "EventListener.h"
+#include "PlayDelegate.h"
 
 class Track;
-class Render:public std::enable_shared_from_this<Demuxer>, EventListener<DemuxerMsg>,PlayDelegate{
+class Render:public std::enable_shared_from_this<Render>, EventListener<DemuxerMsg>,PlayDelegate{
     friend class Track;
     public:
     using Ptr=std::shared_ptr<Render>;
-    explicit Render(std::shared_ptr<AVFrame> frameQueue){
+    explicit Render(std::shared_ptr<FrameQueue> frameQueue){
         m_FrameQueue=frameQueue;
     }
 
@@ -21,7 +23,6 @@ class Render:public std::enable_shared_from_this<Demuxer>, EventListener<Demuxer
         }
     }
 private:
-    int init();
     void start();
     void append_frame(std::unique_ptr<AVFrame> frame);
     void notify();
@@ -31,6 +32,7 @@ private:
     virtual void play();
     virtual void pause();
     virtual void seek(long position);
+    virtual int init()=0;
     virtual void render()=0;
 
 private:

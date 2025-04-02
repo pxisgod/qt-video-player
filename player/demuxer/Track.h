@@ -4,10 +4,13 @@
 #include "util/common.h"
 #include <memory>
 #include <thread>
+#include "EventListener.h"
+#include "PlayDelegate.h"
+#include "Render.h"
 
 class Demuxer;
 
-class Track : public std::enable_shared_from_this<Track>,EventListener<DemuxerMsg>,PlayDelegate{
+class Track : public ThreadChain,EventListener<DemuxerMsg>{
     friend class Demuxer;
 public:
     using Ptr=std::shared_ptr<Track>;
@@ -18,37 +21,24 @@ public:
         m_MediaType=mediaType;
     }
 
-    ~Track(){
-        if(m_Thread!=nullptr){
-            delete m_Thread;
-            m_Thread=nullptr;
-        }
+    virtual ~Track(){
     }
 private:
-    int init();
-    void start();
-    void append_packet(std::unique_ptr<AVPacket> packet);
-    void notify();
-    void sync();
-    void stop();
-    void decoder_thread();
-    void decode();
-    virtual void play();
-    virtual void pause();
+    virtual bool pause_condition();
+    virtual bool stop_condition();
+    virtual int init();
     virtual void seek(long position);
+    virtual int work_func();
+    virtual void clean_func();
+    void append_packet(std::unique_ptr<AVPacket> packet);
 
 private:
     uint32_t m_StreamId; // 轨道 ID
+    AVMediaType m_MediaType;
     std::shared_ptr<Demuxer> m_Demuxer; 
+    std::weak_ptr<Render> m_Render;
     std::shared_ptr<PacketQueue> m_PacketQueue;
     std::shared_ptr<FrameQueue> m_FrameQueue;
-    AVMediaType m_MediaType;
-    std::thread *m_Thread;
-    std::atomic<int> m_ThreadState; //线程状态
-    std::atomic<int> m_PauseState; //暂停状态
-    std::recursive_mutex m_PauseMutex;
-    std::condition_variable_any m_PauseCond; 
-    std::mutex m_RscMutex;
     std::shared_ptr<AVCodecContext> m_AVCodecContext;
 };
 

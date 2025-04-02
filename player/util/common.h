@@ -37,22 +37,25 @@ enum PlayerCBType {
     MSG_PLAY_FINISH,  //播放完成
 };
 
-#define MAX_PACKET_QUEUE_SIZE 32
-#define MAX_FRAME_QUEUE_SIZE 32
+#define MAX_PACKET_QUEUE_SIZE 64
+#define MAX_FRAME_QUEUE_SIZE 64
+#define MAX_PACKET_RESERVE_SIZE 32
+#define MAX_FRAME_RESERVE_SIZE 32
 
 typedef struct PakcetQueue{
     std::unique_ptr<AVPacket> packet_queue[MAX_PACKET_QUEUE_SIZE];
     uint16_t r_index=0;
     uint16_t w_index=0;
-    std::recursive_mutex mutex;
-    std::condition_variable cond;
-    int size;
+    //std::recursive_mutex mutex;
+    //std::condition_variable cond;
+    int reserve_size=MAX_PACKET_RESERVE_SIZE; 
 
     bool isEmpty(){
         return r_index==w_index;
     };
     bool isFull(){
-        return (w_index+1)%MAX_PACKET_QUEUE_SIZE==r_index;
+        return (w_index<r_index && w_index+reserve_size+1>=r_index) ||
+                 (w_index>r_index && (w_index+reserve_size+1)%MAX_FRAME_QUEUE_SIZE>=r_index);
     };
     void append_packet(std::unique_ptr<AVPacket> packet){
         packet_queue[w_index]=std::move(packet);
@@ -61,7 +64,16 @@ typedef struct PakcetQueue{
     AVPacket* remove_packet(){
         int rIndex=r_index;
         r_index=(r_index+1)%MAX_PACKET_QUEUE_SIZE;
-        return packet_queue[rIndex].release();
+        AVPacket * packet= packet_queue[rIndex].release();
+        packet_queue[rIndex]=nullptr;
+        return packet;
+    };
+    void clear(){
+        for(int i=0;i<MAX_PACKET_QUEUE_SIZE;i++){
+            packet_queue[i]=nullptr;
+        }
+        r_index=0;
+        w_index=0;
     };
 }PacketQueue;
 
@@ -69,13 +81,17 @@ typedef struct FrameQueue{
     std::unique_ptr<AVFrame> frame_queue[MAX_FRAME_QUEUE_SIZE];
     uint16_t r_index=0;
     uint16_t w_index=0;
-    std::recursive_mutex mutex;
-    std::condition_variable cond;
+    //std::recursive_mutex mutex;
+    //std::condition_variable cond;
+    int reserve_size=MAX_FRAME_RESERVE_SIZE;//预留空间,因为一次解码出来的frame可能不只1
+
+    
     bool isEmpty(){
         return r_index==w_index;
     };
     bool isFull(){
-        return (w_index+1)%MAX_FRAME_QUEUE_SIZE==r_index;
+        return (w_index<r_index && w_index+reserve_size+1>=r_index) ||
+                 (w_index>r_index && (w_index+reserve_size+1)%MAX_FRAME_QUEUE_SIZE>=r_index);
     };
     void append_frame(std::unique_ptr<AVFrame> packet){
         frame_queue[w_index]=std::move(packet);
@@ -84,7 +100,16 @@ typedef struct FrameQueue{
     AVFrame* remove_frame(){
         int rIndex=r_index;
         r_index=(r_index+1)%MAX_FRAME_QUEUE_SIZE;
-        return frame_queue[rIndex].release();
+        AVFrame* frame= frame_queue[rIndex].release();
+        frame_queue[rIndex]=nullptr;
+        return frame;
+    };
+    void clear(){
+        for(int i=0;i<MAX_PACKET_QUEUE_SIZE;i++){
+            frame_queue[i]=nullptr;
+        }
+        r_index=0;
+        w_index=0;
     };
 }FrameQueue;
 
