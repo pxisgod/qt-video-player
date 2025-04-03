@@ -1,5 +1,7 @@
 #include "VideoFrameScaler.h"
 #include "Track.h"
+#include "VRender.h"
+
 void VideoFrameScaler::init_sws_context(int screen_width, int screen_height)
 {
     // 使用资源锁
@@ -10,16 +12,14 @@ void VideoFrameScaler::init_sws_context(int screen_width, int screen_height)
     SwsContext *sws_context = sws_getContext(m_video_width, m_video_height, m_src_pix_format,
                                              screen_width, screen_height, DST_PIXEL_FORMAT,
                                              SWS_FAST_BILINEAR, NULL, NULL, NULL);
-    m_sws_context = std::make_shared<SwsContext>(sws_context, [](SwsContext *sws_context_ptr)
-                                                 {
+    m_sws_context = std::shared_ptr<SwsContext>(sws_context, [](SwsContext *sws_context_ptr)
+                                                {
         if(sws_context_ptr != nullptr) {
             sws_freeContext(sws_context_ptr);
         } });
     m_scale_frame_queue->clear(); // 处理帧队列清空
     m_frame_queue->rollback();    // 原始帧读指针回滚
 }
-
-
 
 int VideoFrameScaler::init()
 {
@@ -53,14 +53,16 @@ int VideoFrameScaler::work_func()
 {
     AVFrame *frame = m_frame_queue->read_frame_1();
     AVFrame *scale_frame = av_frame_alloc();
-    int buffer_size = av_image_get_buffer_size(DST_PIXEL_FORMAT, m_screen_width, m_screen_height, 1);
-    uint8_t *frame_buffer = (uint8_t *)av_malloc(buffer_size * sizeof(uint8_t));
-    std::unique_ptr<AVFrame> frame_ptr = std::make_unique<AVFrame>(
-        frame, [frame_buffer](AVFrame *ptr)
+    scale_frame->width = m_screen_width;
+    scale_frame->height = m_screen_height;
+    scale_frame->format = DST_PIXEL_FORMAT;
+    av_frame_get_buffer(scale_frame, 1);
+    std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame_ptr{
+        frame, [](AVFrame *ptr)
         {
-        if(ptr!=nullptr)
-                    av_frame_free(&ptr); 
-                    av_free(frame_buffer); });
+            if (ptr != nullptr)
+                av_frame_free(&ptr);
+        }};
     if (sws_scale(m_sws_context.get(), frame->data, frame->linesize, 0,
                   m_video_height, scale_frame->data, scale_frame->linesize) == 0)
     {

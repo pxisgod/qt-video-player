@@ -3,6 +3,13 @@
 #include "AudioFrameScaler.h"
 #include "VideoFrameScaler.h"
 
+Track::Track(uint32_t stream_id,std::shared_ptr<Demuxer> demuxer,AVMediaType media_type,std::shared_ptr<PacketQueue> packet_queue){
+    m_stream_id=stream_id;
+    m_demuxer=demuxer;
+    m_media_type=media_type;
+    m_packet_queue=packet_queue;
+    m_time_base=demuxer->get_av_format_context()->streams[stream_id]->time_base;
+}
 bool Track::pause_condition()
 {
     return m_packet_queue->is_empty() || m_frame_queue->is_full();
@@ -28,7 +35,7 @@ int Track::init()
 
     // 7.创建解码器上下文
     AVCodecContext *avCodecContext = avcodec_alloc_context3(avCodec);
-    m_av_codec_context = std::make_shared<AVCodecContext>(
+    m_av_codec_context = std::shared_ptr<AVCodecContext>(
         avCodecContext, [](AVCodecContext *ptr)
         {
           avcodec_close(ptr);
@@ -108,7 +115,7 @@ int Track::work_func()
             return 0;
         }
         AVFrame *frame = av_frame_alloc();
-        std::unique_ptr<AVFrame> frame_ptr = std::make_unique<AVFrame>(
+        std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame_ptr(
             frame, [](AVFrame *ptr)
             {
                         if(ptr!=nullptr)
@@ -117,11 +124,11 @@ int Track::work_func()
         {
             scaler->append_frame(std::move(frame_ptr));
             frame = av_frame_alloc();
-            frame_ptr = std::make_unique<AVFrame>(
+            frame_ptr=std::unique_ptr<AVFrame, void (*)(AVFrame *)>(
                 frame, [](AVFrame *ptr)
                 {
-                        if(ptr!=nullptr)
-                            av_frame_unref(ptr); });
+                            if(ptr!=nullptr)
+                                av_frame_unref(ptr); });
             frame_count++;         
         }
         m_demuxer->notify(); //通知demuxer

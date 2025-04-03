@@ -8,19 +8,17 @@
 #include "ThreadChain.h"
 
 class Track;
+
 class Scaler:public ThreadChain, EventListener<DemuxerMsg>{
     friend class Track;
 public:
     using Ptr=std::shared_ptr<Scaler>;
 
-    explicit Scaler(std::shared_ptr<FrameQueue> frame_queue,std::shared_ptr<Track> track){
-        m_frame_queue=frame_queue;
-        m_track=track;
-    }
+    explicit Scaler(std::shared_ptr<FrameQueue> frame_queue,std::shared_ptr<Track> track);
 
     virtual ~Scaler(){
     }
-    void append_frame(std::unique_ptr<AVFrame> frame);
+    void append_frame(std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame);
 
     std::shared_ptr<FrameQueue> get_frame_queue(){
         return m_frame_queue;
@@ -28,6 +26,9 @@ public:
 
     std::shared_ptr<FrameQueue> get_scale_frame_queue(){
         return m_scale_frame_queue;
+    }
+    AVRational get_time_base(){
+        return m_time_base;
     }
     void render_finish();//渲染成功一帧，b_index指针往前移动一个
 
@@ -43,6 +44,7 @@ protected:
     std::shared_ptr<Track> m_track; 
     std::shared_ptr<FrameQueue> m_frame_queue;
     std::shared_ptr<FrameQueue> m_scale_frame_queue;
+    AVRational m_time_base;
 };
 
 #endif

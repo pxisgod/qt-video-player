@@ -1,7 +1,8 @@
 #ifndef VIDEO_FRAME_SCALER_H
 #define VIDEO_FRAME_SCALER_H
 #include "Scaler.h"
-#include "VRender.h"
+
+class VRender;
 class VideoFrameScaler : public Scaler
 {
 public:

@@ -2,15 +2,14 @@
 #define V_RENDER_H
 #include "ThreadChain.h"
 #include "util/common.h"
+#include "Clock.h"
+
 
 class VideoFrameScaler;
 class VRender:public ThreadChain{
 public:
-    void append_frame(std::unique_ptr<AVFrame> frame);
-    void set_video_frame_scaler(std::shared_ptr<VideoFrameScaler> frame_scaler){
-        m_frame_scaler=frame_scaler;
-        m_frame_queue=frame_scaler->get_scale_frame_queue();
-    }
+    void append_frame(std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame);
+    void set_video_frame_scaler(std::shared_ptr<VideoFrameScaler> frame_scaler);
     virtual void resize_window()=0;
     virtual bool pause_condition();
     virtual bool stop_condition();
@@ -20,7 +19,9 @@ public:
 protected:
     std::shared_ptr<VideoFrameScaler> m_frame_scaler;
     std::shared_ptr<FrameQueue> m_frame_queue;
-    int screen_width;
-    int screen_height;
+    int m_screen_width;
+    int m_screen_height;
+    Clock m_clock;
+    AVRational m_time_base;
 };
-#endif;
+#endif

@@ -1,7 +1,11 @@
 #include "Scaler.h"
 #include "Track.h"
-
-void Scaler::append_frame(std::unique_ptr<AVFrame> frame){
+Scaler::Scaler(std::shared_ptr<FrameQueue> frame_queue,std::shared_ptr<Track> track){
+    m_frame_queue=frame_queue;
+    m_track=track;
+    m_time_base=track->get_time_base();
+}
+void Scaler::append_frame(std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame){
     m_frame_queue->append_frame(std::move(frame));
     notify();
 }

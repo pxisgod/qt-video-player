@@ -12,7 +12,7 @@ int Demuxer::init()
 
     // 1.创建封装格式上下文
     AVFormatContext *av_format_context = avformat_alloc_context();
-    m_av_format_context = std::make_shared<AVFormatContext>(av_format_context, [](AVFormatContext *ptr)
+    m_av_format_context=std::shared_ptr<AVFormatContext>(av_format_context, [](AVFormatContext *ptr)
                                                           {
             avformat_close_input(&ptr);
             avformat_free_context(ptr); });
@@ -97,6 +97,7 @@ int Demuxer::create_track_list()
     {
         switch (m_av_format_context->streams[i]->codecpar->codec_type)
         {
+            /*
         case AVMEDIA_TYPE_AUDIO:
             track = std::make_shared<Track>(i, demuxer, AVMEDIA_TYPE_AUDIO, m_packet_queue0);
             add_thread(track);
@@ -106,10 +107,11 @@ int Demuxer::create_track_list()
             }
             else
             {
-                m_track_list[1] = track;
+                m_track_list[0] = track;
                 m_track_map.emplace(i, track);
             }
             break;
+            */
         case AVMEDIA_TYPE_VIDEO:
             track = std::make_shared<Track>(i, demuxer, AVMEDIA_TYPE_VIDEO, m_packet_queue1);
             add_thread(track);

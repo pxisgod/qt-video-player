@@ -120,7 +120,7 @@ private:
 protected:
     virtual bool pause_condition() { return false; }
     virtual bool stop_condition() { return false; }
-    virtual int init() {}
+    virtual int init() {return 0;}
     virtual void uninit();
     virtual void start();
     virtual void stop();

@@ -6,25 +6,24 @@
 #include <thread>
 #include "EventListener.h"
 #include "ThreadChain.h"
-#include "Scaler.h"
 
 class Demuxer;
+
+class Scaler;
 
 class Track : public ThreadChain,EventListener<DemuxerMsg>{
     friend class Demuxer;
 public:
     using Ptr=std::shared_ptr<Track>;
-    explicit Track(uint32_t stream_id,std::shared_ptr<Demuxer> demuxer,AVMediaType media_type,std::shared_ptr<PacketQueue> packet_queue){
-        m_stream_id=stream_id;
-        m_demuxer=demuxer;
-        m_media_type=media_type;
-        m_packet_queue=packet_queue;
-    }
+    explicit Track(uint32_t stream_id,std::shared_ptr<Demuxer> demuxer,AVMediaType media_type,std::shared_ptr<PacketQueue> packet_queue);
 
     virtual ~Track(){
     }
     std::shared_ptr<AVCodecContext> get_av_codec_context(){
         return m_av_codec_context;
+    }
+    AVRational get_time_base(){
+        return m_time_base;
     }
 protected:
     virtual bool pause_condition();
@@ -46,6 +45,8 @@ private:
     std::weak_ptr<Scaler> m_scaler;
     std::shared_ptr<FrameQueue> m_frame_queue;
     std::shared_ptr<AVCodecContext> m_av_codec_context;
+    AVRational m_time_base;
+
 };
 
 #endif 

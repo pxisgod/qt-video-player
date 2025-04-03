@@ -17,6 +17,7 @@ extern "C"
 #include <qdebug.h>
 #include <mutex>
 #include <condition_variable>
+#include <memory>
 
 enum PlayerCBType
 {
@@ -98,7 +99,8 @@ typedef struct PakcetQueue
 
 typedef struct FrameQueue
 {
-    std::unique_ptr<AVFrame> frame_queue[MAX_FRAME_QUEUE_SIZE];
+    std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame_queue[MAX_FRAME_QUEUE_SIZE] = {
+        std::unique_ptr<AVFrame, void (*)(AVFrame *)>(nullptr, [](AVFrame *frame) { if (frame) av_frame_free(&frame); })};
     uint16_t r_index = 0;
     uint16_t w_index = 0;
     uint16_t b_index = 0;
@@ -117,7 +119,7 @@ typedef struct FrameQueue
         return (w_index < b_index && w_index + reserve_size + 1 >= b_index) ||
                (w_index > b_index && (w_index + reserve_size + 1) % MAX_FRAME_QUEUE_SIZE >= b_index);
     };
-    void append_frame(std::unique_ptr<AVFrame> frame)
+    void append_frame(std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame)
     {
         frame_queue[w_index] = std::move(frame);
         w_index = (w_index + 1) % MAX_FRAME_QUEUE_SIZE;
