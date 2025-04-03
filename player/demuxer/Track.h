@@ -14,14 +14,17 @@ class Track : public ThreadChain,EventListener<DemuxerMsg>{
     friend class Demuxer;
 public:
     using Ptr=std::shared_ptr<Track>;
-    explicit Track(uint32_t streamId,std::shared_ptr<Demuxer> demuxer,AVMediaType mediaType,std::shared_ptr<PacketQueue> packetQueue){
-        m_StreamId=streamId;
-        m_Demuxer=demuxer;
-        m_PacketQueue=packetQueue;
-        m_MediaType=mediaType;
+    explicit Track(uint32_t stream_id,std::shared_ptr<Demuxer> demuxer,AVMediaType media_type,std::shared_ptr<PacketQueue> packet_queue){
+        m_stream_id=stream_id;
+        m_demuxer=demuxer;
+        m_media_type=media_type;
+        m_packet_queue=packet_queue;
     }
 
     virtual ~Track(){
+    }
+    std::shared_ptr<AVCodecContext> get_av_codec_context(){
+        return m_av_codec_context;
     }
 protected:
     virtual bool pause_condition();
@@ -36,13 +39,13 @@ private:
 
 
 private:
-    uint32_t m_StreamId; // 轨道 ID
-    AVMediaType m_MediaType;
-    std::shared_ptr<Demuxer> m_Demuxer; 
+    uint32_t m_stream_id; // 轨道 ID
+    std::shared_ptr<Demuxer> m_demuxer; 
+    AVMediaType m_media_type;
+    std::shared_ptr<PacketQueue> m_packet_queue;
     std::weak_ptr<Scaler> m_scaler;
-    std::shared_ptr<PacketQueue> m_PacketQueue;
-    std::shared_ptr<FrameQueue> m_FrameQueue;
-    std::shared_ptr<AVCodecContext> m_AVCodecContext;
+    std::shared_ptr<FrameQueue> m_frame_queue;
+    std::shared_ptr<AVCodecContext> m_av_codec_context;
 };
 
-#endif // TRACK_H
+#endif 

@@ -1,20 +1,27 @@
 #include "Scaler.h"
+#include "Track.h"
 
-
+void Scaler::append_frame(std::unique_ptr<AVFrame> frame){
+    m_frame_queue->append_frame(std::move(frame));
+    notify();
+}
+void Scaler::render_finish(){
+    m_frame_queue->remove_frame();
+    notify();
+}
 bool Scaler::pause_condition(){
-    return false;
+    return m_frame_queue->is_empty() ||m_scale_frame_queue->is_full();
 }
 bool Scaler::stop_condition(){
-    return false;
+    return m_frame_queue->is_empty();
 }
 int Scaler::init(){
+    m_scale_frame_queue = std::make_shared<FrameQueue>();//创建scale后的frame_queue
     return 0;
 }
 void Scaler::seek(long position){
-
-}
-int Scaler::work_func(){
-    return 0;
+    clean_func();
 }
 void Scaler::clean_func(){
+    m_scale_frame_queue->clear();
 }

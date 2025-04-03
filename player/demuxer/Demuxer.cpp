@@ -3,7 +3,7 @@
 
 bool Demuxer::pause_condition()
 {
-    return m_packet_queue0->isFull() || m_packet_queue1->isFull();
+    return m_packet_queue0->is_full() || m_packet_queue1->is_full();
 }
 
 int Demuxer::init()
@@ -73,6 +73,7 @@ int Demuxer::work_func()
             }
         }
     }
+    return 0;
 }
 void Demuxer::clean_func()
 {

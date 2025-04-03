@@ -131,7 +131,8 @@ protected:
     virtual void thread_func();
     virtual int work_func() { return 0; } //-1异常，0正常处理，1处理结束
     virtual void clean_func() {} //清理资源
-
+public:
+    std::mutex m_rsc_mutex;                    // 资源锁
 private:
     int m_level; // 在树中的层级
     std::list<ThreadChain::W_Ptr> m_child_list;
@@ -141,7 +142,6 @@ private:
     std::atomic<int> m_work_state;             // 工作状态
     std::recursive_mutex m_thread_mutex;       // 暂停条件锁
     std::condition_variable_any m_thread_cond; // 暂停条件
-    std::mutex m_rsc_mutex;                    // 资源锁
     std::mutex m_play_mutex;            // 全局播放锁,只有顶层可以使用
     int m_play_state;                   // 播放状态，只有顶层可以使用
     static thread_local std::list<ThreadChain::S_Ptr> m_all_thread; //所有线程的强引用
