@@ -1,5 +1,7 @@
 #include "Track.h"
 #include "Demuxer.h"
+#include "DemuxerAudioRender.h"
+#include "DemuxerVideoRender.h"
 
 bool Track::pause_condition()
 {
@@ -51,49 +53,86 @@ int Track::init()
         qDebug("DecoderBase::InitFFDecoder avcodec_open2 fail. result=%d", result);
         return -1;
     }
-    return 0;
+    return create_scaler();
 }
 
-int Track::create_render()
+int Track::create_scaler()
 {
-}
+    switch (m_MediaType)
+    {
+    case AVMEDIA_TYPE_AUDIO:
+        m_Render = std::make_shared<DemuxerAudio>(i, demuxer, AVMEDIA_TYPE_AUDIO, m_packet_queue0);
+        add_thread(track);
+        if (track->init() != 0) // 初始化失败
+        {
+            return -1;
+        }
+        else
+        {
+            m_track_list[1] = track;
+            m_track_map.emplace(i, track);
+        }
+        break;
+    case AVMEDIA_TYPE_VIDEO:
+        track = std::make_shared<Track>(i, demuxer, AVMEDIA_TYPE_VIDEO, m_packet_queue1);
+        add_thread(track);
+        if (track->init() != 0)
+        {
+            return -1;
+        }
+        else
+        {
+            m_track_list[1] = track;
+            m_track_map.emplace(i, track);
+        }
+        break;
 
+    default:
+        break;
+    }
+    
+    return -1;
+}
 void Track::seek(long position)
 {
     clean_func();
-
 }
 int Track::work_func()
 {
-    int rIndex = m_PacketQueue->r_index;
-            if (avcodec_send_packet(m_AVCodecContext.get(), m_PacketQueue->remove_packet()) == 0)
+    int ret = avcodec_send_packet(m_AVCodecContext.get(), m_PacketQueue->remove_packet());
+    if (ret == 0)
+    {
+        int frameCount = 0;
+        AVFrame *frame = av_frame_alloc();
+        std::unique_ptr<AVFrame> frame_ptr = std::make_unique<AVFrame>(
+            frame, [](AVFrame *ptr)
             {
-                int frameCount = 0;
-                AVFrame *frame = av_frame_alloc();
-                std::unique_ptr<AVFrame> frame_ptr = std::make_unique<AVFrame>(
-                    frame, [](AVFrame *ptr){
                         if(ptr!=nullptr)
                             av_frame_unref(ptr); });
-                while (avcodec_receive_frame(m_AVCodecContext.get(), frame_ptr.get()) == 0){
-                    m_FrameQueue->append_frame(std::move(frame_ptr));
-                    frame_ptr = std::make_unique<AVFrame>(
-                        frame, [](AVFrame *ptr){
+        while (avcodec_receive_frame(m_AVCodecContext.get(), frame_ptr.get()) == 0)
+        {
+            m_FrameQueue->append_frame(std::move(frame_ptr));
+            frame_ptr = std::make_unique<AVFrame>(
+                frame, [](AVFrame *ptr)
+                {
                         if(ptr!=nullptr)
                             av_frame_unref(ptr); });
-                }
-            }
-            else
-            {
-                // 解码失败
-                m_ThreadState = STATE_STOPPED;
-            }
+        }
+    }
+    else if (ret == AVERROR_EOF)
+    {
+        return 1;
+    }
+    else
+    {
+        return -1;
+    }
 }
 void Track::clean_func()
 {
     m_FrameQueue->clear();
     avcodec_flush_buffers(m_AVCodecContext.get());
 }
-
 void Track::append_packet(std::unique_ptr<AVPacket> packet)
 {
     m_PacketQueue->append_packet(std::move(packet));

@@ -2,9 +2,9 @@
 
 void ThreadChain::add_thread(ThreadChain::S_Ptr child)
 {
-    child->level = level + 1; // 层级+1
+    child->m_level = m_level + 1; // 层级+1
     m_child_list.push_back(child);
-    m_all_thread.push_back(child);//保存一个强引用，防止对象析构
+    m_all_thread.push_back(child); // 保存一个强引用，防止对象析构
     child->m_father = shared_from_this();
 }
 
@@ -27,36 +27,42 @@ void ThreadChain::sync()
     }
 }
 
-void ThreadChain::init_0() //放最外层就行了，其他线程不用使用
+void ThreadChain::init_0() // 只有顶层可以使用
 {
-    if (init() != 0)
+    if (is_root(shared_from_this()))
     {
-        uninit_0(); //全部去除初始化
+        if (init() != 0)
+        {
+            uninit_0(); // 全部去除初始化
+        }
     }
 }
 
-void ThreadChain::uninit_0()
+void ThreadChain::uninit_0() // 只有顶层可以使用
 {
     // 从子向父遍历
-    auto leaf_list = get_all_thread(get_root(shared_from_this()));
+    auto leaf_list = get_all_thread(shared_from_this());
     leaf_list.sort();
     for (auto iter = leaf_list.rbegin(); iter != leaf_list.rend(); iter++)
     {
-        (*iter)->uninit();
+        (*iter)->uninit(); // 线程中保存了强引用，可以清除原来的强引用
     }
 }
 
 void ThreadChain::start_0()
 {
-    // 从父向子遍历
-    auto leaf_list = get_all_thread(get_root(shared_from_this()));
-    leaf_list.sort();
-    for (auto iter = leaf_list.begin(); iter != leaf_list.end(); iter++)
+    if (is_root(shared_from_this()))
     {
-        (*iter)->start();
+        m_play_state = PLAYING;//默认初始状态
+        // 从父向子遍历
+        auto leaf_list = get_all_thread(shared_from_this());
+        leaf_list.sort();
+        for (auto iter = leaf_list.begin(); iter != leaf_list.end(); iter++)
+        {
+            (*iter)->start();
+            (*iter)->uninit(); // 线程中保存了强引用，可以清除原来的强引用
+        }
     }
-    //线程中保存了强引用，可以清除原来的强引用
-    m_all_thread.clear();
 }
 
 void ThreadChain::stop_0()
@@ -70,55 +76,63 @@ void ThreadChain::stop_0()
     }
 }
 
-void ThreadChain::try_stop_0()
+void ThreadChain::try_stop_0() // 只设置根节点
 {
-    // 只设置根节点
     auto root = get_root(shared_from_this());
     root->try_stop();
 }
 
-void ThreadChain::play_0()
+void ThreadChain::play_0() // 只有顶层可以使用
 {
-    std::lock_guard<std::mutex> lock(m_play_mutex);
-    if (m_play_state == PAUSE)
+    if (is_root(shared_from_this()))
     {
-        m_play_state = PLAYING;
-        // 从父向子遍历
-        auto leaf_list = get_all_thread(get_root(shared_from_this()));
-        leaf_list.sort();
-        for (auto iter = leaf_list.begin(); iter != leaf_list.end(); iter++)
+        std::lock_guard<std::mutex> lock(m_play_mutex);
+        if (m_play_state == PAUSE)
         {
-            (*iter)->play();
-        }
-    }
-}
-
-void ThreadChain::pause_0()
-{
-    std::lock_guard<std::mutex> lock(m_play_mutex);
-    if (m_play_state == PLAYING)
-    {
-        m_play_state = PAUSE;
-        // 从子向父遍历
-        auto leaf_list = get_all_thread(get_root(shared_from_this()));
-        leaf_list.sort();
-        for (auto iter = leaf_list.rbegin(); iter != leaf_list.rend(); iter++)
-        {
-            (*iter)->pause();
-        }
-    }
-}
-
-void ThreadChain::seek_0(long position)
-{
-    std::lock_guard<std::mutex> lock(m_play_mutex);
-    {
-        if (m_play_state == PLAYING || m_play_state == PAUSE)
-        {
-            // 从子向父遍历
-            auto leaf_list = get_all_thread(get_root(shared_from_this()));
+            m_play_state = PLAYING;
+            // 从父向子遍历
+            auto leaf_list = get_all_thread(shared_from_this());
             leaf_list.sort();
-            seek_0_l(leaf_list,position);
+            for (auto iter = leaf_list.begin(); iter != leaf_list.end(); iter++)
+            {
+                (*iter)->play();
+            }
+        }
+    }
+}
+
+void ThreadChain::pause_0() // 只有顶层可以使用
+{
+    if (is_root(shared_from_this()))
+    {
+        std::lock_guard<std::mutex> lock(m_play_mutex);
+        if (m_play_state == PLAYING)
+        {
+            m_play_state = PAUSE;
+            // 从子向父遍历
+            auto leaf_list = get_all_thread(shared_from_this());
+            leaf_list.sort();
+            for (auto iter = leaf_list.rbegin(); iter != leaf_list.rend(); iter++)
+            {
+                (*iter)->pause();
+            }
+        }
+    }
+}
+
+void ThreadChain::seek_0(long position) // 只有顶层可以使用
+{
+    if (is_root(shared_from_this()))
+    {
+        std::lock_guard<std::mutex> lock(m_play_mutex);
+        {
+            if (m_play_state == PLAYING || m_play_state == PAUSE)
+            {
+                // 从子向父遍历
+                auto leaf_list = get_all_thread(shared_from_this());
+                leaf_list.sort();
+                seek_0_l(leaf_list, position);
+            }
         }
     }
 }
@@ -128,15 +142,16 @@ void ThreadChain::seek_0_l(std::list<ThreadChain::S_Ptr> leaf_list, long positio
     if (!leaf_list.empty())
     {
         ThreadChain::S_Ptr thread = leaf_list.front();
-        std::lock_guard<std::mutex> lock(thread->m_rsc_mutex);  //获取资源锁，这个资源锁会互相嵌套
+        std::lock_guard<std::mutex> lock(thread->m_rsc_mutex); // 获取资源锁，这个资源锁会互相嵌套
         thread->seek(position);
         leaf_list.pop_front();
         seek_0_l(leaf_list, position);
     }
 }
 
-void ThreadChain::uninit(){
-    m_all_thread.remove(shared_from_this());//去除强引用，发生析构
+void ThreadChain::uninit()
+{
+    m_all_thread.remove(shared_from_this()); // 去除强引用，可能发生析构
 }
 
 void ThreadChain::start()
@@ -170,19 +185,24 @@ void ThreadChain::try_stop()
     }
 }
 
-void ThreadChain:: play(){
-    int expected=m_thread_state.load( std::memory_order_seq_cst);
-    if(expected==THREAD_PAUSE){
-        if(m_thread_state.compare_exchange_strong(expected,THREAD_RUNNING)){
+void ThreadChain::play()
+{
+    int expected = m_thread_state.load(std::memory_order_seq_cst);
+    if (expected == THREAD_PAUSE)
+    {
+        if (m_thread_state.compare_exchange_strong(expected, THREAD_RUNNING))
+        {
             notify();
         }
     }
 }
 
-void ThreadChain::pause(){
-    int expected=m_thread_state.load( std::memory_order_seq_cst);
-    if(expected==THREAD_RUNNING){
-        m_thread_state.compare_exchange_strong(expected,THREAD_PAUSE);
+void ThreadChain::pause()
+{
+    int expected = m_thread_state.load(std::memory_order_seq_cst);
+    if (expected == THREAD_RUNNING)
+    {
+        m_thread_state.compare_exchange_strong(expected, THREAD_PAUSE);
     }
 }
 
@@ -247,7 +267,7 @@ void ThreadChain::thread_func()
         clean_func();
     }
     // 修改全局状态
-    if (!m_father.get())
+    if (is_root(shared_from_this())) // 只有顶层可以使用
     {
         // 根节点
         std::lock_guard<std::mutex> lock(m_play_mutex);

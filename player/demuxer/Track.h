@@ -5,8 +5,8 @@
 #include <memory>
 #include <thread>
 #include "EventListener.h"
-#include "PlayDelegate.h"
-#include "Render.h"
+#include "ThreadChain.h"
+#include "Scaler.h"
 
 class Demuxer;
 
@@ -23,20 +23,23 @@ public:
 
     virtual ~Track(){
     }
-private:
+protected:
     virtual bool pause_condition();
     virtual bool stop_condition();
     virtual int init();
     virtual void seek(long position);
     virtual int work_func();
     virtual void clean_func();
+private:
     void append_packet(std::unique_ptr<AVPacket> packet);
+    int create_scaler();
+
 
 private:
     uint32_t m_StreamId; // 轨道 ID
     AVMediaType m_MediaType;
     std::shared_ptr<Demuxer> m_Demuxer; 
-    std::weak_ptr<Render> m_Render;
+    std::weak_ptr<Scaler> m_scaler;
     std::shared_ptr<PacketQueue> m_PacketQueue;
     std::shared_ptr<FrameQueue> m_FrameQueue;
     std::shared_ptr<AVCodecContext> m_AVCodecContext;

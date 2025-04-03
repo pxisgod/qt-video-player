@@ -17,18 +17,6 @@ extern "C" {
 #include <mutex>
 #include <condition_variable>
 
-enum PauseState {
-    STATE_PLAYING,
-    STATE_PAUSE
-};
-
-enum ThreadState {
-    STATE_WORKING,
-    STATE_PAUSING,
-    STATE_STOPING,
-    STATE_STOPPED
-};
-
 enum PlayerCBType {
     MSG_INIT_ERROR, //解码器初始化失败
     MSG_DEMUXER_START,//解码器初始化成功 
