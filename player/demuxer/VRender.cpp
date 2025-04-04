@@ -1,7 +1,7 @@
 #include "VRender.h"
 #include "VideoFrameScaler.h"
 
-void VRender::append_frame(std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame){
+void VRender::append_frame(std::shared_ptr<AVFrame> frame){
     m_frame_queue->append_frame(std::move(frame));
     notify();
 }

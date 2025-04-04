@@ -5,12 +5,12 @@ Scaler::Scaler(std::shared_ptr<FrameQueue> frame_queue,std::shared_ptr<Track> tr
     m_track=track;
     m_time_base=track->get_time_base();
 }
-void Scaler::append_frame(std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame){
+void Scaler::append_frame(std::shared_ptr<AVFrame> frame){
     m_frame_queue->append_frame(std::move(frame));
     notify();
 }
 void Scaler::render_finish(){
-    m_frame_queue->remove_frame();
+    m_frame_queue->remove_frame_1();
     notify();
 }
 bool Scaler::pause_condition(){

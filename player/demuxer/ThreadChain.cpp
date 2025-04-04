@@ -226,8 +226,18 @@ void ThreadChain::thread_func()
             }
             else
             {
-                std::unique_lock<std::recursive_mutex> lock(m_thread_mutex);
-                m_thread_cond.wait(lock);
+                long wait_time = get_wait_time();
+                if (wait_time > 0)
+                {
+                    std::unique_lock<std::recursive_mutex> lock(m_thread_mutex);
+                    m_thread_cond.wait_for(lock,std::chrono::milliseconds(wait_time));
+                }else if(wait_time==0){
+                    std::unique_lock<std::recursive_mutex> lock(m_thread_mutex);
+                    m_thread_cond.wait(lock);
+                }else{
+                    do_some_things();
+                    continue;
+                }
             }
         }
         m_thread_state.store(THREAD_RUNNING);

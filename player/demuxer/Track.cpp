@@ -105,7 +105,7 @@ void Track::seek(long position)
 }
 int Track::work_func()
 {
-    int ret = avcodec_send_packet(m_av_codec_context.get(), m_packet_queue->read_packet_2());
+    int ret = avcodec_send_packet(m_av_codec_context.get(), m_packet_queue->read_packet().get());
     if (ret == 0)
     {
         int frame_count = 0;
@@ -115,7 +115,7 @@ int Track::work_func()
             return 0;
         }
         AVFrame *frame = av_frame_alloc();
-        std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame_ptr(
+        std::shared_ptr<AVFrame> frame_ptr(
             frame, [](AVFrame *ptr)
             {
                         if(ptr!=nullptr)
@@ -124,7 +124,7 @@ int Track::work_func()
         {
             scaler->append_frame(std::move(frame_ptr));
             frame = av_frame_alloc();
-            frame_ptr=std::unique_ptr<AVFrame, void (*)(AVFrame *)>(
+            frame_ptr=std::shared_ptr<AVFrame>(
                 frame, [](AVFrame *ptr)
                 {
                             if(ptr!=nullptr)
@@ -132,9 +132,12 @@ int Track::work_func()
             frame_count++;         
         }
         m_demuxer->notify(); //通知demuxer
+        m_packet_queue->remove_packet_3();
+        return 0;
     }
     else if (ret == AVERROR_EOF)
     {
+        m_packet_queue->remove_packet_3();
         return 1;
     }
     else
@@ -148,7 +151,7 @@ void Track::clean_func()
     avcodec_flush_buffers(m_av_codec_context.get());
 }
 
-void Track::append_packet(std::unique_ptr<AVPacket> packet)
+void Track::append_packet(std::shared_ptr<AVPacket> packet)
 {
     m_packet_queue->append_packet(std::move(packet));
     notify();

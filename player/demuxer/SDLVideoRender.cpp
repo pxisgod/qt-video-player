@@ -43,7 +43,7 @@ int SDLVideoRender::init(){
 }
 
 int SDLVideoRender::work_func(){
-    AVFrame *frame = m_frame_queue->read_frame_2();
+    std::shared_ptr<AVFrame> frame = m_frame_queue->read_frame();
     long pts;
     if(frame->pkt_dts != AV_NOPTS_VALUE) {
         pts = frame->pkt_dts;

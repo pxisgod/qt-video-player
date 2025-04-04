@@ -51,18 +51,17 @@ void VideoFrameScaler::uninit()
 
 int VideoFrameScaler::work_func()
 {
-    AVFrame *frame = m_frame_queue->read_frame_1();
+    std::shared_ptr<AVFrame> frame = m_frame_queue->read_frame();
     AVFrame *scale_frame = av_frame_alloc();
     scale_frame->width = m_screen_width;
     scale_frame->height = m_screen_height;
     scale_frame->format = DST_PIXEL_FORMAT;
     av_frame_get_buffer(scale_frame, 1);
-    std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame_ptr{
-        frame, [](AVFrame *ptr)
+    std::shared_ptr<AVFrame> frame_ptr=std::shared_ptr<AVFrame>(scale_frame, [](AVFrame *ptr)
         {
             if (ptr != nullptr)
                 av_frame_free(&ptr);
-        }};
+        });
     if (sws_scale(m_sws_context.get(), frame->data, frame->linesize, 0,
                   m_video_height, scale_frame->data, scale_frame->linesize) == 0)
     {
@@ -71,6 +70,7 @@ int VideoFrameScaler::work_func()
             render->append_frame(std::move(frame_ptr));
         }
         m_track->notify(); // 通知track
+        m_frame_queue->remove_frame_3();
         return 0;
     }
     return -1;

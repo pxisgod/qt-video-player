@@ -18,7 +18,7 @@ public:
 
     virtual ~Scaler(){
     }
-    void append_frame(std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame);
+    void append_frame(std::shared_ptr<AVFrame> frame);
 
     std::shared_ptr<FrameQueue> get_frame_queue(){
         return m_frame_queue;

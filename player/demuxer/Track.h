@@ -33,7 +33,7 @@ protected:
     virtual int work_func();
     virtual void clean_func();
 private:
-    void append_packet(std::unique_ptr<AVPacket> packet);
+    void append_packet(std::shared_ptr<AVPacket> packet);
     int create_scaler();
 
 

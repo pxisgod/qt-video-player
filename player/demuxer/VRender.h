@@ -8,7 +8,7 @@
 class VideoFrameScaler;
 class VRender:public ThreadChain{
 public:
-    void append_frame(std::unique_ptr<AVFrame, void (*)(AVFrame *)> frame);
+    void append_frame(std::shared_ptr<AVFrame> frame);
     void set_video_frame_scaler(std::shared_ptr<VideoFrameScaler> frame_scaler);
     virtual void resize_window()=0;
     virtual bool pause_condition();

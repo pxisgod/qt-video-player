@@ -120,6 +120,8 @@ private:
 protected:
     virtual bool pause_condition() { return false; }
     virtual bool stop_condition() { return false; }
+    virtual long get_wait_time(){return 0;}
+    virtual void do_some_things(){}
     virtual int init() {return 0;}
     virtual void uninit();
     virtual void start();
