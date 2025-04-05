@@ -10,7 +10,7 @@
 
 class Track;
 
-class Scaler:public ThreadChain, EventListener<DemuxerMsg>{
+class Scaler:public ThreadChain{
     friend class Track;
 public:
     using Ptr=std::shared_ptr<Scaler>;

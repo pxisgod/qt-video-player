@@ -23,7 +23,7 @@ public:
         m_clock_drift = pts_time - m_clock_real_time;
     }
 
-    double get_clock_time_time()
+    double get_clock_time()
     {
         return m_clock_drift;
     }

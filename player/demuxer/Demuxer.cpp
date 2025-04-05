@@ -54,7 +54,7 @@ void Demuxer::seek(long position)
 int Demuxer::work_func()
 {
     AVPacket *packet = av_packet_alloc();
-    std::shared_ptr<AVPacket> packet_ptr = std::make_unique<AVPacket>(
+    std::shared_ptr<AVPacket> packet_ptr = std::shared_ptr<AVPacket>(
         packet, [](AVPacket *ptr)
         {
                 if(ptr!=nullptr)

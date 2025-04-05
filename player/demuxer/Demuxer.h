@@ -7,7 +7,7 @@
 
 class Track;
 
-class Demuxer : public ThreadChain, EventListener<DemuxerMsg>
+class Demuxer : public ThreadChain
 {
 public:
     using Ptr = std::shared_ptr<Demuxer>;

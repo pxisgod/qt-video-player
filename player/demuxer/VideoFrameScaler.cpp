@@ -1,7 +1,7 @@
 #include "VideoFrameScaler.h"
 #include "Track.h"
 #include "VRender.h"
-
+thread_local std::shared_ptr<VRender>  VideoFrameScaler::m_thread_video_render;
 void VideoFrameScaler::init_sws_context(int screen_width, int screen_height)
 {
     // 使用资源锁

@@ -10,7 +10,7 @@ class VRender:public ThreadChain{
 public:
     void append_frame(std::shared_ptr<AVFrame> frame);
     void set_video_frame_scaler(std::shared_ptr<VideoFrameScaler> frame_scaler);
-    virtual void resize_window()=0;
+    virtual void resize_window(){};
     virtual bool pause_condition();
     virtual bool stop_condition();
     virtual bool notify_condition();

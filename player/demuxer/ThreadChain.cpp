@@ -1,4 +1,5 @@
 #include "ThreadChain.h"
+thread_local std::list<ThreadChain::S_Ptr> ThreadChain::m_all_thread; //所有线程的强引用
 
 void ThreadChain::add_thread(ThreadChain::S_Ptr child)
 {

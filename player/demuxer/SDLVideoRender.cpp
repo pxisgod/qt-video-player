@@ -1,6 +1,9 @@
 #include "SDLVideoRender.h"
 #include "VideoFrameScaler.h"
 
+thread_local std::shared_ptr<AVFrame> SDLVideoRender::m_pending_frame;
+thread_local double SDLVideoRender::m_sleep_time;
+thread_local long SDLVideoRender::m_frame_pts;
 int SDLVideoRender::init()
 {
     if (SDL_Init(SDL_INIT_VIDEO))

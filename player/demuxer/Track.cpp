@@ -77,10 +77,11 @@ int Track::init()
 int Track::create_scaler()
 {
     std::shared_ptr<Scaler> scaler;
+    std::shared_ptr<Track> track=std::static_pointer_cast<Track>(shared_from_this());
     switch (m_media_type)
     {
     case AVMEDIA_TYPE_AUDIO:
-        scaler = std::make_shared<AudioFrameScaler>(m_packet_queue, shared_from_this());
+        scaler = std::make_shared<AudioFrameScaler>(m_frame_queue, track);
         add_thread(scaler);
         if (scaler->init() != 0) // 初始化失败
         {
@@ -92,7 +93,7 @@ int Track::create_scaler()
         }
         break;
     case AVMEDIA_TYPE_VIDEO:
-        scaler = std::make_shared<VideoFrameScaler>(m_packet_queue, shared_from_this());
+        scaler = std::make_shared<VideoFrameScaler>(m_frame_queue, track);
         add_thread(scaler);
         if (scaler->init() != 0) // 初始化失败
         {

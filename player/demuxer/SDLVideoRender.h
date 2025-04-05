@@ -6,9 +6,11 @@
 class SDLVideoRender:public VRender{
 public:
     explicit SDLVideoRender(QWidget *widget):m_widget(widget){
+        
+    }
+    virtual ~SDLVideoRender(){
         SDL_Quit();//释放资源
     }
-    virtual ~SDLVideoRender(){}
     virtual int init();
     virtual int work_func();
     virtual void resize_window();
