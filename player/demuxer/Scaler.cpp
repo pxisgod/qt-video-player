@@ -3,10 +3,10 @@
 Scaler::Scaler(std::shared_ptr<FrameQueue> frame_queue,std::shared_ptr<Track> track){
     m_frame_queue=frame_queue;
     m_track=track;
-    m_time_base=track->get_time_base();
+    m_clock=track->get_clock();
 }
 void Scaler::append_frame(std::shared_ptr<AVFrame> frame){
-    m_frame_queue->append_frame(std::move(frame));
+    m_frame_queue->append_frame(frame);
     notify();
 }
 void Scaler::render_finish(){
@@ -18,6 +18,14 @@ bool Scaler::pause_condition(){
 }
 bool Scaler::stop_condition(){
     return m_frame_queue->is_empty();
+}
+bool Scaler::notify_condition(){
+    return !m_frame_queue->is_empty() && !m_scale_frame_queue->is_full();
+}
+long Scaler::get_wait_time(){
+    return 0;
+}
+void Scaler::deal_neg_wait_time(){
 }
 int Scaler::init(){
     m_scale_frame_queue = std::make_shared<FrameQueue>();//创建scale后的frame_queue

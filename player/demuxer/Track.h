@@ -6,6 +6,7 @@
 #include <thread>
 #include "EventListener.h"
 #include "ThreadChain.h"
+#include "SyncClock.h"
 
 class Demuxer;
 
@@ -22,12 +23,15 @@ public:
     std::shared_ptr<AVCodecContext> get_av_codec_context(){
         return m_av_codec_context;
     }
-    AVRational get_time_base(){
-        return m_time_base;
+    std::shared_ptr<SyncClock> get_clock(){
+        return m_clock;
     }
 protected:
     virtual bool pause_condition();
     virtual bool stop_condition();
+    virtual bool notify_condition();
+    virtual long get_wait_time();
+    virtual void deal_neg_wait_time();
     virtual int init();
     virtual void seek(long position);
     virtual int work_func();
@@ -45,7 +49,7 @@ private:
     std::weak_ptr<Scaler> m_scaler;
     std::shared_ptr<FrameQueue> m_frame_queue;
     std::shared_ptr<AVCodecContext> m_av_codec_context;
-    AVRational m_time_base;
+    std::shared_ptr<SyncClock> m_clock;
 
 };
 

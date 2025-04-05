@@ -8,7 +8,7 @@ Track::Track(uint32_t stream_id,std::shared_ptr<Demuxer> demuxer,AVMediaType med
     m_demuxer=demuxer;
     m_media_type=media_type;
     m_packet_queue=packet_queue;
-    m_time_base=demuxer->get_av_format_context()->streams[stream_id]->time_base;
+    m_clock=std::make_shared<SyncClock>(demuxer->get_av_format_context()->streams[stream_id]->time_base);
 }
 bool Track::pause_condition()
 {
@@ -19,6 +19,16 @@ bool Track::stop_condition()
 {
     return m_packet_queue->is_empty();
 }
+
+bool Track::notify_condition(){
+    return  !m_packet_queue->is_empty() && !m_frame_queue->is_full();
+}
+long Track::get_wait_time(){
+    return 0;
+}
+void Track::deal_neg_wait_time(){
+}
+
 
 int Track::init()
 {
@@ -105,6 +115,10 @@ void Track::seek(long position)
 }
 int Track::work_func()
 {
+    if(m_packet_queue->is_empty())
+    {
+        return 0;
+    }
     int ret = avcodec_send_packet(m_av_codec_context.get(), m_packet_queue->read_packet().get());
     if (ret == 0)
     {
@@ -122,7 +136,7 @@ int Track::work_func()
                             av_frame_unref(ptr); });
         while (avcodec_receive_frame(m_av_codec_context.get(), frame_ptr.get()) == 0)
         {
-            scaler->append_frame(std::move(frame_ptr));
+            scaler->append_frame(frame_ptr);
             frame = av_frame_alloc();
             frame_ptr=std::shared_ptr<AVFrame>(
                 frame, [](AVFrame *ptr)
@@ -131,8 +145,8 @@ int Track::work_func()
                                 av_frame_unref(ptr); });
             frame_count++;         
         }
-        m_demuxer->notify(); //通知demuxer
         m_packet_queue->remove_packet_3();
+        m_demuxer->notify(); //通知demuxer
         return 0;
     }
     else if (ret == AVERROR_EOF)
@@ -153,6 +167,6 @@ void Track::clean_func()
 
 void Track::append_packet(std::shared_ptr<AVPacket> packet)
 {
-    m_packet_queue->append_packet(std::move(packet));
+    m_packet_queue->append_packet(packet);
     notify();
 }

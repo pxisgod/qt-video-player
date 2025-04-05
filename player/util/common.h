@@ -67,25 +67,26 @@ typedef struct PakcetQueue
         std::unique_lock<std::recursive_mutex> lock(mutex);
         return packet_queue[r_index];
     };
-    void remove_packet_1()//b_index+1
+    void remove_packet_1() // b_index+1
     {
         std::unique_lock<std::recursive_mutex> lock(mutex);
         int index = b_index;
         b_index = (b_index + 1) % MAX_PACKET_QUEUE_SIZE;
         packet_queue[index].reset();
     };
-    void remove_packet_2()//r_index+1
+    void remove_packet_2() // r_index+1
     {
         std::unique_lock<std::recursive_mutex> lock(mutex);
         int index = r_index;
         r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
         packet_queue[index].reset();
     };
-    void remove_packet_3()//r_index+1 && b_index=r_index
+    void remove_packet_3() // r_index+1 && b_index=r_index
     {
         std::unique_lock<std::recursive_mutex> lock(mutex);
         r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
-        for(;b_index!=r_index;){
+        for (; b_index != r_index;)
+        {
             packet_queue[b_index].reset();
             b_index = (b_index + 1) % MAX_PACKET_QUEUE_SIZE;
         }
@@ -106,6 +107,14 @@ typedef struct PakcetQueue
         w_index = 0;
         b_index = 0;
     };
+    int readable_size()
+    {
+        return (w_index - r_index + MAX_PACKET_QUEUE_SIZE) % MAX_PACKET_QUEUE_SIZE;
+    };
+    int size()
+    {
+        return (w_index - b_index + MAX_PACKET_QUEUE_SIZE) % MAX_PACKET_QUEUE_SIZE;
+    }
 } PacketQueue;
 
 typedef struct FrameQueue
@@ -118,69 +127,78 @@ typedef struct FrameQueue
     std::condition_variable cond;
     int reserve_size = MAX_FRAME_RESERVE_SIZE; // 预留空间,因为一次解码出来的frame可能不只1
 
-   // 已经没有可以读的空间
-   bool is_empty()
-   {
-       std::unique_lock<std::recursive_mutex> lock(mutex);
-       return r_index == w_index;
-   };
-   // 已经没有可以写的空间
-   bool is_full()
-   {
-       std::unique_lock<std::recursive_mutex> lock(mutex);
-       return (w_index < b_index && w_index + reserve_size + 1 >= b_index) ||
-              (w_index > b_index && (w_index + reserve_size + 1) % MAX_PACKET_QUEUE_SIZE >= b_index);
-   };
-   void append_frame(std::shared_ptr<AVFrame> frame)
-   {
-       std::unique_lock<std::recursive_mutex> lock(mutex);
-       frame_queue[w_index] = frame;
-       w_index = (w_index + 1) % MAX_PACKET_QUEUE_SIZE;
-   };
-   std::shared_ptr<AVFrame> read_frame()
-   {
-       std::unique_lock<std::recursive_mutex> lock(mutex);
-       return frame_queue[r_index];
-   };
-   void remove_frame_1()//b_index+1
-   {
-       std::unique_lock<std::recursive_mutex> lock(mutex);
-       int index = b_index;
-       b_index = (b_index + 1) % MAX_PACKET_QUEUE_SIZE;
-       frame_queue[index].reset();
-   };
-   void remove_frame_2()//r_index+1
-   {
-       std::unique_lock<std::recursive_mutex> lock(mutex);
-       int index = r_index;
-       r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
-       frame_queue[index].reset();
-   };
-   void remove_frame_3()//r_index+1 && b_index=r_index
-   {
-       std::unique_lock<std::recursive_mutex> lock(mutex);
-       r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
-       for(;b_index!=r_index;){
+    // 已经没有可以读的空间
+    bool is_empty()
+    {
+        std::unique_lock<std::recursive_mutex> lock(mutex);
+        return r_index == w_index;
+    };
+    // 已经没有可以写的空间
+    bool is_full()
+    {
+        std::unique_lock<std::recursive_mutex> lock(mutex);
+        return (w_index < b_index && w_index + reserve_size + 1 >= b_index) ||
+               (w_index > b_index && (w_index + reserve_size + 1) % MAX_PACKET_QUEUE_SIZE >= b_index);
+    };
+    void append_frame(std::shared_ptr<AVFrame> frame)
+    {
+        std::unique_lock<std::recursive_mutex> lock(mutex);
+        frame_queue[w_index] = frame;
+        w_index = (w_index + 1) % MAX_PACKET_QUEUE_SIZE;
+    };
+    std::shared_ptr<AVFrame> read_frame()
+    {
+        std::unique_lock<std::recursive_mutex> lock(mutex);
+        return frame_queue[r_index];
+    };
+    void remove_frame_1() // b_index+1
+    {
+        std::unique_lock<std::recursive_mutex> lock(mutex);
+        int index = b_index;
+        b_index = (b_index + 1) % MAX_PACKET_QUEUE_SIZE;
+        frame_queue[index].reset();
+    };
+    void remove_frame_2() // r_index+1
+    {
+        std::unique_lock<std::recursive_mutex> lock(mutex);
+        int index = r_index;
+        r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
+        frame_queue[index].reset();
+    };
+    void remove_frame_3() // r_index+1 && b_index=r_index
+    {
+        std::unique_lock<std::recursive_mutex> lock(mutex);
+        r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
+        for (; b_index != r_index;)
+        {
             frame_queue[b_index].reset();
             b_index = (b_index + 1) % MAX_PACKET_QUEUE_SIZE;
-       }
-   };
-   void rollback()
-   { // 读指针回滚到基指针
-       std::unique_lock<std::recursive_mutex> lock(mutex);
-       r_index = b_index;
-   }
-   void clear()
-   {
-       std::unique_lock<std::recursive_mutex> lock(mutex);
-       for (int i = 0; i < MAX_PACKET_QUEUE_SIZE; i++)
-       {
-        frame_queue[i].reset();
-       }
-       r_index = 0;
-       w_index = 0;
-       b_index = 0;
-   };
+        }
+    };
+    void rollback()
+    { // 读指针回滚到基指针
+        std::unique_lock<std::recursive_mutex> lock(mutex);
+        r_index = b_index;
+    }
+    void clear()
+    {
+        std::unique_lock<std::recursive_mutex> lock(mutex);
+        for (int i = 0; i < MAX_PACKET_QUEUE_SIZE; i++)
+        {
+            frame_queue[i].reset();
+        }
+        r_index = 0;
+        w_index = 0;
+        b_index = 0;
+    };
+    int readable_size()
+    {
+        return (w_index - r_index + MAX_PACKET_QUEUE_SIZE) % MAX_PACKET_QUEUE_SIZE;
+    };
+    int size()
+    {
+        return (w_index - b_index + MAX_PACKET_QUEUE_SIZE) % MAX_PACKET_QUEUE_SIZE;
+    }
 } FrameQueue;
 
 // 解复用消息类型

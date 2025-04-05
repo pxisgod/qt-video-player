@@ -37,6 +37,8 @@ public:
 
     explicit ThreadChain()
     {
+        m_work_state.store(IS_STOPPED, std::memory_order_seq_cst);//默认工作状态为STOPPED
+        m_play_state = STOPPED; // 初始播放状态为STOPPED
         m_level = 0;
     }
 
@@ -120,8 +122,9 @@ private:
 protected:
     virtual bool pause_condition() { return false; }
     virtual bool stop_condition() { return false; }
+    virtual bool notify_condition() { return true; }
     virtual long get_wait_time(){return 0;}
-    virtual void do_some_things(){}
+    virtual void deal_neg_wait_time(){}
     virtual int init() {return 0;}
     virtual void uninit();
     virtual void start();

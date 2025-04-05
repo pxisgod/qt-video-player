@@ -2,7 +2,7 @@
 #define V_RENDER_H
 #include "ThreadChain.h"
 #include "util/common.h"
-#include "Clock.h"
+#include "SyncClock.h"
 
 
 class VideoFrameScaler;
@@ -13,6 +13,9 @@ public:
     virtual void resize_window()=0;
     virtual bool pause_condition();
     virtual bool stop_condition();
+    virtual bool notify_condition();
+    virtual long get_wait_time();
+    virtual void deal_neg_wait_time();
     virtual int init();
     virtual void seek(long position);
     virtual void clean_func();
@@ -21,7 +24,6 @@ protected:
     std::shared_ptr<FrameQueue> m_frame_queue;
     int m_screen_width;
     int m_screen_height;
-    Clock m_clock;
-    AVRational m_time_base;
+    std::shared_ptr<SyncClock> m_clock;
 };
 #endif

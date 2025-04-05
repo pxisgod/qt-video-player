@@ -51,6 +51,10 @@ void VideoFrameScaler::uninit()
 
 int VideoFrameScaler::work_func()
 {
+    if(m_frame_queue->is_empty())
+    {
+        return 0;
+    }
     std::shared_ptr<AVFrame> frame = m_frame_queue->read_frame();
     AVFrame *scale_frame = av_frame_alloc();
     scale_frame->width = m_screen_width;
@@ -67,10 +71,10 @@ int VideoFrameScaler::work_func()
     {
         if (auto render = m_video_render.lock())
         {
-            render->append_frame(std::move(frame_ptr));
+            render->append_frame(frame_ptr);
         }
+        m_frame_queue->remove_frame_2();
         m_track->notify(); // 通知track
-        m_frame_queue->remove_frame_3();
         return 0;
     }
     return -1;

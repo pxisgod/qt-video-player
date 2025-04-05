@@ -5,6 +5,17 @@ bool Demuxer::pause_condition()
 {
     return m_packet_queue0->is_full() || m_packet_queue1->is_full();
 }
+bool Demuxer::stop_condition(){
+    return false;
+}
+bool Demuxer::notify_condition(){
+    return !m_packet_queue0->is_full() && !m_packet_queue1->is_full();
+}
+long Demuxer::get_wait_time(){
+    return 0;
+}
+void Demuxer::deal_neg_wait_time(){
+}
 
 int Demuxer::init()
 {
@@ -27,7 +38,6 @@ int Demuxer::init()
         m_duration = av_format_context->duration / AV_TIME_BASE * 1000; // us to ms
         m_packet_queue0 = std::make_shared<PacketQueue>();
         m_packet_queue1 = std::make_shared<PacketQueue>();
-        Demuxer::Ptr demuxer = std::static_pointer_cast<Demuxer>(shared_from_this());
         return create_track_list();
     }
 }
@@ -69,7 +79,7 @@ int Demuxer::work_func()
             auto track = iter->second;
             if (auto track_ptr = track.lock())
             {
-                track_ptr->append_packet(std::move(packet_ptr));
+                track_ptr->append_packet(packet_ptr);
             }
         }
     }
@@ -114,6 +124,7 @@ int Demuxer::create_track_list()
             */
         case AVMEDIA_TYPE_VIDEO:
             track = std::make_shared<Track>(i, demuxer, AVMEDIA_TYPE_VIDEO, m_packet_queue1);
+            track->get_clock()->set_master_clock(m_clock);
             add_thread(track);
             if (track->init() != 0)
             {

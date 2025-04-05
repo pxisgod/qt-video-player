@@ -3,6 +3,7 @@
 
 #include "util/common.h"
 #include "ThreadChain.h"
+#include "SystemClock.h"
 
 class Track;
 
@@ -12,11 +13,16 @@ public:
     using Ptr = std::shared_ptr<Demuxer>;
     explicit Demuxer(std::string &&url) : m_url(std::move(url))
     {
+        m_clock=std::make_shared<SystemClock>();
     }
 
     virtual ~Demuxer(){}
 
     virtual bool pause_condition();
+    virtual bool stop_condition();
+    virtual bool notify_condition();
+    virtual long get_wait_time();
+    virtual void deal_neg_wait_time();
     virtual int init();
     virtual void seek(long position);
     virtual int work_func();
@@ -34,6 +40,7 @@ private:
     int64_t m_duration;
     std::shared_ptr<PacketQueue> m_packet_queue0; //音频队列
     std::shared_ptr<PacketQueue> m_packet_queue1;  //视频队列
+    std::shared_ptr<SystemClock> m_clock;
 };
 
 #endif // DEMUXER_H

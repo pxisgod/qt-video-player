@@ -2,13 +2,13 @@
 #include "VideoFrameScaler.h"
 
 void VRender::append_frame(std::shared_ptr<AVFrame> frame){
-    m_frame_queue->append_frame(std::move(frame));
+    m_frame_queue->append_frame(frame);
     notify();
 }
 void VRender::set_video_frame_scaler(std::shared_ptr<VideoFrameScaler> frame_scaler){
    m_frame_scaler=frame_scaler;
    m_frame_queue=frame_scaler->get_scale_frame_queue();
-   m_time_base=frame_scaler->get_time_base();
+   m_clock=frame_scaler->get_clock();
 }
 
  bool VRender::pause_condition(){
@@ -17,6 +17,14 @@ void VRender::set_video_frame_scaler(std::shared_ptr<VideoFrameScaler> frame_sca
  bool VRender::stop_condition(){
     return m_frame_queue->is_empty();
  }
+ bool VRender::notify_condition(){
+   return m_frame_queue->readable_size()==1;
+}
+long VRender::get_wait_time(){
+   return 0;
+}
+void VRender::deal_neg_wait_time(){
+}
  int VRender::init(){
     m_frame_scaler->init_sws_context(m_screen_width,m_screen_height);
     return 0;
