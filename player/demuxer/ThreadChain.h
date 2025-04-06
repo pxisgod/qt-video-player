@@ -11,7 +11,8 @@
 enum ThreadState
 {
     THREAD_RUNNING,
-    THREAD_PAUSE
+    THREAD_PAUSE,
+    THREAD_WAITING
 };
 
 enum WorkState

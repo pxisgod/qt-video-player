@@ -11,13 +11,14 @@ void ThreadChain::add_thread(ThreadChain::S_Ptr child)
 
 void ThreadChain::notify()
 {
-    std::unique_lock<std::recursive_mutex> lock(m_thread_mutex); //占用锁，并且在锁上后判断有没有其他线程在wait,防止发生伪唤醒
+    std::unique_lock<std::recursive_mutex> lock(m_thread_mutex);
     int thread_state = m_thread_state.exchange(THREAD_RUNNING, std::memory_order_seq_cst);
-    if (thread_state == THREAD_PAUSE)
+    if (thread_state == THREAD_WAITING)//实际唤醒
     {
         notify_debug();
         m_thread_cond.notify_one();
     }
+    //else是提前唤醒，因为此时notify在wait前面执行了
 }
 
 void ThreadChain::sync()
@@ -220,6 +221,7 @@ void ThreadChain::thread_func()
     {
         while (true)
         {
+            m_thread_state.store(THREAD_PAUSE, std::memory_order_seq_cst);
             int work_state = m_work_state.load(std::memory_order_seq_cst);
             if (work_state == IS_STOPPED || work_state == IS_STOPING)
             {
@@ -243,8 +245,12 @@ void ThreadChain::thread_func()
                     else if (wait_time == 0)
                     {
                         std::unique_lock<std::recursive_mutex> lock(m_thread_mutex);
-                        m_thread_state.store(THREAD_PAUSE, std::memory_order_seq_cst);
-                        m_thread_cond.wait(lock);
+                        int thread_state = m_thread_state.load(std::memory_order_seq_cst);
+                        if(thread_state == THREAD_PAUSE)
+                        {
+                            m_thread_state.store(THREAD_WAITING,std::memory_order_seq_cst);
+                            m_thread_cond.wait(lock);
+                        }
                         continue;
                     }
                     else
