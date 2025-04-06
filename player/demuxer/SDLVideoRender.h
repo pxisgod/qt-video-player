@@ -1,15 +1,15 @@
 #ifndef SDL_VIDEO_RENDER_H
 #define SDL_VIDEO_RENDER_H
 #include "VRender.h"
-#include <SDL2/SDL.h>
 #include <QWidget>
-class SDLVideoRender:public VRender{
+#include <SDLRender.h>
+class SDLVideoRender:public VRender,public SDL_Render{
 public:
     explicit SDLVideoRender(QWidget *widget):m_widget(widget){
         
     }
     virtual ~SDLVideoRender(){
-        SDL_Quit();//释放资源
+
     }
     virtual int init();
     virtual int thread_init();

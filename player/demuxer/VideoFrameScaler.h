@@ -15,7 +15,9 @@ public:
     {}
     static void set_thread_render(std::shared_ptr<VRender> video_render){
         m_thread_video_render=video_render;
-
+    }
+    static void remove_thread_render(){
+        m_thread_video_render.reset();
     }
     static std::shared_ptr<VRender> get_thread_render(){
         return m_thread_video_render;

@@ -45,9 +45,7 @@ int SDLVideoRender::thread_init()
                                                    { SDL_DestroyRenderer(renderer_ptr); });
         auto texture = SDL_CreateTexture(renderer, DST_PIX_FORMAT, SDL_TEXTUREACCESS_STREAMING, m_screen_width, m_screen_height);
         m_texture = std::shared_ptr<SDL_Texture>(texture, [](SDL_Texture *texture_ptr)
-                                                 { 
-                                                    SDL_DestroyTexture(texture_ptr); 
-                                                });
+                                                 { SDL_DestroyTexture(texture_ptr); });
         return 0;
     }
 }
@@ -143,7 +141,7 @@ bool SDLVideoRender::pause_condition()
 }
 long SDLVideoRender::get_wait_time()
 {
-    /* 测试用
+    /* 测试用*/
     if(m_sleep_time != 0)
     {
         return 10;
@@ -152,8 +150,8 @@ long SDLVideoRender::get_wait_time()
     {
         return 0;
     }
-    */
-    return m_sleep_time;
+    
+    //return m_sleep_time;
 }
 
 void SDLVideoRender::deal_neg_wait_time()
