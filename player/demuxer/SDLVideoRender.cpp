@@ -143,15 +143,17 @@ bool SDLVideoRender::pause_condition()
 }
 long SDLVideoRender::get_wait_time()
 {
+    /* 测试用
     if(m_sleep_time != 0)
     {
-        return 100;
+        return 10;
     }
     else
     {
         return 0;
     }
-    //return m_sleep_time;
+    */
+    return m_sleep_time;
 }
 
 void SDLVideoRender::deal_neg_wait_time()
@@ -167,5 +169,6 @@ void SDLVideoRender::deal_neg_wait_time()
         m_frame_queue->remove_frame_3();
         m_frame_scaler->notify();
         m_frame_scaler->render_finish();
+        m_clock->set_clock(m_frame_pts); // 设置时钟
     }
 }

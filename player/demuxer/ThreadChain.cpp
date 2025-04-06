@@ -11,6 +11,7 @@ void ThreadChain::add_thread(ThreadChain::S_Ptr child)
 
 void ThreadChain::notify()
 {
+    std::unique_lock<std::recursive_mutex> lock(m_thread_mutex); //占用锁，并且在锁上后判断有没有其他线程在wait,防止发生伪唤醒
     int thread_state = m_thread_state.exchange(THREAD_RUNNING, std::memory_order_seq_cst);
     if (thread_state == THREAD_PAUSE)
     {
@@ -219,7 +220,6 @@ void ThreadChain::thread_func()
     {
         while (true)
         {
-            m_thread_state.store(THREAD_PAUSE, std::memory_order_seq_cst);
             int work_state = m_work_state.load(std::memory_order_seq_cst);
             if (work_state == IS_STOPPED || work_state == IS_STOPING)
             {
@@ -243,6 +243,7 @@ void ThreadChain::thread_func()
                     else if (wait_time == 0)
                     {
                         std::unique_lock<std::recursive_mutex> lock(m_thread_mutex);
+                        m_thread_state.store(THREAD_PAUSE, std::memory_order_seq_cst);
                         m_thread_cond.wait(lock);
                         continue;
                     }
