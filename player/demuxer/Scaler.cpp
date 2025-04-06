@@ -11,16 +11,13 @@ void Scaler::append_frame(std::shared_ptr<AVFrame> frame){
 }
 void Scaler::render_finish(){
     m_frame_queue->remove_frame_1();
-    notify();
+    m_track->notify();
 }
 bool Scaler::pause_condition(){
     return m_frame_queue->is_empty() ||m_scale_frame_queue->is_full();
 }
 bool Scaler::stop_condition(){
     return m_frame_queue->is_empty();
-}
-bool Scaler::notify_condition(){
-    return !m_frame_queue->is_empty() && !m_scale_frame_queue->is_full();
 }
 long Scaler::get_wait_time(){
     return 0;

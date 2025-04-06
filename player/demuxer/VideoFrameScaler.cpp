@@ -1,7 +1,7 @@
 #include "VideoFrameScaler.h"
 #include "Track.h"
 #include "VRender.h"
-thread_local std::shared_ptr<VRender>  VideoFrameScaler::m_thread_video_render;
+thread_local std::shared_ptr<VRender> VideoFrameScaler::m_thread_video_render;
 void VideoFrameScaler::init_sws_context(int screen_width, int screen_height)
 {
     // 使用资源锁
@@ -51,31 +51,48 @@ void VideoFrameScaler::uninit()
 
 int VideoFrameScaler::work_func()
 {
-    if(m_frame_queue->is_empty())
+    if (m_frame_queue->is_empty())
     {
         return 0;
     }
     std::shared_ptr<AVFrame> frame = m_frame_queue->read_frame();
     AVFrame *scale_frame = av_frame_alloc();
-    scale_frame->width = m_screen_width;
-    scale_frame->height = m_screen_height;
-    scale_frame->format = DST_PIXEL_FORMAT;
-    av_frame_get_buffer(scale_frame, 1);
-    std::shared_ptr<AVFrame> frame_ptr=std::shared_ptr<AVFrame>(scale_frame, [](AVFrame *ptr)
-        {
-            if (ptr != nullptr)
+    // scale_frame->width = m_screen_width;
+    // scale_frame->height = m_screen_height;
+    // scale_frame->format = DST_PIXEL_FORMAT;
+    // av_frame_get_buffer(scale_frame, 32);
+    int buffer_size = av_image_get_buffer_size(DST_PIXEL_FORMAT, m_screen_width, m_screen_height, 32);
+    uint8_t *frame_buffer = (uint8_t *)av_malloc(buffer_size * sizeof(uint8_t));
+    av_image_fill_arrays(scale_frame->data, scale_frame->linesize,
+                         frame_buffer, DST_PIXEL_FORMAT, m_screen_width, m_screen_height, 32);
+    std::shared_ptr<AVFrame> frame_ptr = std::shared_ptr<AVFrame>(scale_frame, [frame_buffer](AVFrame *ptr)
+                                                                  {
+            if (ptr != nullptr){
                 av_frame_free(&ptr);
-        });
-    if (sws_scale(m_sws_context.get(), frame->data, frame->linesize, 0,
-                  m_video_height, scale_frame->data, scale_frame->linesize) == 0)
+            }
+            if(frame_buffer != nullptr){
+                av_free(frame_buffer);
+            } });
+    int ret = sws_scale(m_sws_context.get(), frame->data, frame->linesize, 0,
+                        m_video_height, scale_frame->data, scale_frame->linesize);
+    if (ret < 0)
     {
-        if (auto render = m_video_render.lock())
-        {
-            render->append_frame(frame_ptr);
-        }
-        m_frame_queue->remove_frame_2();
-        m_track->notify(); // 通知track
-        return 0;
+        char err_buf[AV_ERROR_MAX_STRING_SIZE];
+        av_make_error_string(err_buf, AV_ERROR_MAX_STRING_SIZE, ret);
+        qDebug() << "sws_scale failed: " << err_buf;
+        return -1;
     }
-    return -1;
+
+    if (auto render = m_video_render.lock())
+    {
+        scale_frame->pts = frame->pts;
+        scale_frame->pkt_dts = frame->pkt_dts;
+        scale_frame->width = m_screen_width;
+        scale_frame->height = m_screen_height;
+        scale_frame->format = DST_PIXEL_FORMAT;
+        render->append_frame(frame_ptr);
+    }
+    m_frame_queue->remove_frame_2();
+    m_track->notify(); // 通知track
+    return 0;
 }

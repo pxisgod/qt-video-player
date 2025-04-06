@@ -28,10 +28,10 @@ enum PlayerCBType
     MSG_PLAY_FINISH,   // 播放完成
 };
 
-#define MAX_PACKET_QUEUE_SIZE 64
-#define MAX_FRAME_QUEUE_SIZE 64
-#define MAX_PACKET_RESERVE_SIZE 32
-#define MAX_FRAME_RESERVE_SIZE 32
+#define MAX_PACKET_QUEUE_SIZE 128
+#define MAX_FRAME_QUEUE_SIZE 128
+#define MAX_PACKET_RESERVE_SIZE 64
+#define MAX_FRAME_RESERVE_SIZE 64
 
 typedef struct PakcetQueue
 {
@@ -52,38 +52,32 @@ typedef struct PakcetQueue
     // 已经没有可以写的空间
     bool is_full()
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         return (w_index < b_index && w_index + reserve_size + 1 >= b_index) ||
                (w_index > b_index && (w_index + reserve_size + 1) % MAX_PACKET_QUEUE_SIZE >= b_index);
     };
     void append_packet(std::shared_ptr<AVPacket> packet)
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         packet_queue[w_index] = packet;
         w_index = (w_index + 1) % MAX_PACKET_QUEUE_SIZE;
     };
     std::shared_ptr<AVPacket> read_packet()
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         return packet_queue[r_index];
     };
     void remove_packet_1() // b_index+1
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         int index = b_index;
         b_index = (b_index + 1) % MAX_PACKET_QUEUE_SIZE;
         packet_queue[index].reset();
     };
     void remove_packet_2() // r_index+1
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         int index = r_index;
         r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
         packet_queue[index].reset();
     };
     void remove_packet_3() // r_index+1 && b_index=r_index
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
         for (; b_index != r_index;)
         {
@@ -93,12 +87,10 @@ typedef struct PakcetQueue
     };
     void rollback()
     { // 读指针回滚到基指针
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         r_index = b_index;
     }
     void clear()
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         for (int i = 0; i < MAX_PACKET_QUEUE_SIZE; i++)
         {
             packet_queue[i].reset();
@@ -130,44 +122,37 @@ typedef struct FrameQueue
     // 已经没有可以读的空间
     bool is_empty()
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         return r_index == w_index;
     };
     // 已经没有可以写的空间
     bool is_full()
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         return (w_index < b_index && w_index + reserve_size + 1 >= b_index) ||
-               (w_index > b_index && (w_index + reserve_size + 1) % MAX_PACKET_QUEUE_SIZE >= b_index);
+               (w_index > b_index && (w_index + reserve_size + 1-MAX_PACKET_QUEUE_SIZE >= b_index));
     };
     void append_frame(std::shared_ptr<AVFrame> frame)
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         frame_queue[w_index] = frame;
         w_index = (w_index + 1) % MAX_PACKET_QUEUE_SIZE;
     };
     std::shared_ptr<AVFrame> read_frame()
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         return frame_queue[r_index];
     };
     void remove_frame_1() // b_index+1
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         int index = b_index;
         b_index = (b_index + 1) % MAX_PACKET_QUEUE_SIZE;
         frame_queue[index].reset();
     };
     void remove_frame_2() // r_index+1
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         int index = r_index;
         r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
         frame_queue[index].reset();
     };
     void remove_frame_3() // r_index+1 && b_index=r_index
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
         for (; b_index != r_index;)
         {
@@ -177,12 +162,10 @@ typedef struct FrameQueue
     };
     void rollback()
     { // 读指针回滚到基指针
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         r_index = b_index;
     }
     void clear()
     {
-        std::unique_lock<std::recursive_mutex> lock(mutex);
         for (int i = 0; i < MAX_PACKET_QUEUE_SIZE; i++)
         {
             frame_queue[i].reset();

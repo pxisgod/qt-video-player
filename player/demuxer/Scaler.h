@@ -7,6 +7,7 @@
 #include "EventListener.h"
 #include "ThreadChain.h"
 #include "SyncClock.h"
+#include <iostream>
 
 class Track;
 
@@ -32,12 +33,14 @@ public:
         return m_clock;
     }
     void render_finish();//渲染成功一帧，b_index指针往前移动一个
+    virtual void notify_debug(){
+        std::cout<< "Scaler::notify_debug" << std::endl;
+    }
 
 
 protected:
     virtual bool pause_condition();
     virtual bool stop_condition();
-    virtual bool notify_condition();
     virtual long get_wait_time();
     virtual void deal_neg_wait_time();
     virtual int init();

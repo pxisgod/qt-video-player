@@ -52,12 +52,12 @@ public:
         if (m_master_clock)
         {
             long diff = m_clock_drift - m_master_clock->get_clock_time();
-            double threshold = std::max(0.04, std::min(0.1, delay));
+            double threshold = std::max(40.0, std::min(100.0, delay));
             if (diff < -threshold)
             {
                 return 0;
             }
-            else if (diff >= threshold && delay > 0.1)
+            else if (diff >= threshold && delay > 100.0)
             {
                 return diff + delay;
             }

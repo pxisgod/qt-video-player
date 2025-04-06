@@ -12,6 +12,7 @@ public:
         SDL_Quit();//释放资源
     }
     virtual int init();
+    virtual int thread_init();
     virtual int work_func();
     virtual void resize_window();
     virtual bool pause_condition();

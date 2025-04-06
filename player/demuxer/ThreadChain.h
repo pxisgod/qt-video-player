@@ -120,9 +120,9 @@ private:
     void try_stop_0();
     static void seek_0_l(std::list<ThreadChain::S_Ptr> leaf_list, long position);
 protected:
+    virtual void notify_debug(){}
     virtual bool pause_condition() { return false; }
     virtual bool stop_condition() { return false; }
-    virtual bool notify_condition() { return true; }
     virtual long get_wait_time(){return 0;}
     virtual void deal_neg_wait_time(){}
     virtual int init() {return 0;}
@@ -134,6 +134,7 @@ protected:
     virtual void pause();
     virtual void seek(long position) {}
     virtual void thread_func();
+    virtual int thread_init(){return 0;}
     virtual int work_func() { return 0; } //-1异常，0正常处理，1处理结束
     virtual void clean_func() {} //清理资源
 public:

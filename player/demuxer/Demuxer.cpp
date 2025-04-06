@@ -8,9 +8,6 @@ bool Demuxer::pause_condition()
 bool Demuxer::stop_condition(){
     return false;
 }
-bool Demuxer::notify_condition(){
-    return !m_packet_queue0->is_full() && !m_packet_queue1->is_full();
-}
 long Demuxer::get_wait_time(){
     return 0;
 }

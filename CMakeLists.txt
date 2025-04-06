@@ -4,7 +4,7 @@ project(QtVideoPlayer)
 
 set(CMAKE_CXX_STANDARD 20)
 
-set( CMAKE_PREFIX_PATH "/home/px/Qt5.12.12/5.12.12/gcc_64/lib/cmake")
+set(CMAKE_PREFIX_PATH "/home/px/Qt5.12.12/5.12.12/gcc_64/lib/cmake")
 
 function(update_cache name)
    set("${name}"  "${ARGN}" CACHE INTERNAL "" FORCE) #设置变量为全局变量，就不用考虑作用域的问题了

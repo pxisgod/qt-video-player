@@ -1,5 +1,5 @@
 #include "ThreadChain.h"
-thread_local std::list<ThreadChain::S_Ptr> ThreadChain::m_all_thread; //所有线程的强引用
+thread_local std::list<ThreadChain::S_Ptr> ThreadChain::m_all_thread; // 所有线程的强引用
 
 void ThreadChain::add_thread(ThreadChain::S_Ptr child)
 {
@@ -14,12 +14,8 @@ void ThreadChain::notify()
     int thread_state = m_thread_state.exchange(THREAD_RUNNING, std::memory_order_seq_cst);
     if (thread_state == THREAD_PAUSE)
     {
-        int work_state = m_work_state.load(std::memory_order_seq_cst);
-        if (work_state == IS_STOPPED || work_state == IS_STOPING ||
-            (work_state == IS_WORKING && ((m_father && m_father->get_work_state() == IS_STOPING) || notify_condition())))
-        {
-            m_thread_cond.notify_one();
-        }
+        notify_debug();
+        m_thread_cond.notify_one();
     }
 }
 
@@ -167,8 +163,8 @@ void ThreadChain::uninit()
 void ThreadChain::start()
 {
     ThreadChain::S_Ptr thread = shared_from_this();
-    m_thread_state.store(THREAD_RUNNING, std::memory_order_seq_cst); //启动的时候设置线程状态
-    m_work_state.store(IS_WORKING, std::memory_order_seq_cst);//启动的时候设置工作状态
+    m_thread_state.store(THREAD_RUNNING, std::memory_order_seq_cst); // 启动的时候设置线程状态
+    m_work_state.store(IS_WORKING, std::memory_order_seq_cst);       // 启动的时候设置工作状态
     m_thread = new std::thread([thread]()
                                { thread->thread_func(); });
 }
@@ -219,60 +215,62 @@ void ThreadChain::pause()
 
 void ThreadChain::thread_func()
 {
-    while (true)
+    if (thread_init() == 0)
     {
-        m_thread_state.store(THREAD_PAUSE, std::memory_order_seq_cst);
-        int work_state = m_work_state.load(std::memory_order_seq_cst);
-        if (work_state == IS_STOPPED || work_state == IS_STOPING)
+        while (true)
         {
-            break;
-        }
-        if (work_state == IS_PAUSED || pause_condition())
-        {
-            if (work_state == IS_WORKING && stop_condition() && m_father && m_father->get_work_state() == IS_STOPING)
+            m_thread_state.store(THREAD_PAUSE, std::memory_order_seq_cst);
+            int work_state = m_work_state.load(std::memory_order_seq_cst);
+            if (work_state == IS_STOPPED || work_state == IS_STOPING)
             {
-                // 当前可以设置成正在停止状态
-                m_work_state.compare_exchange_strong(work_state, IS_STOPING, std::memory_order_seq_cst);
-                continue;
+                break;
             }
-            else
+            if (pause_condition() || work_state == IS_PAUSED)
             {
-                long wait_time = get_wait_time();
-                if (wait_time > 0)
+                if (work_state == IS_WORKING && stop_condition() && m_father && m_father->get_work_state() == IS_STOPING)
                 {
-                    std::unique_lock<std::recursive_mutex> lock(m_thread_mutex);
-                    if (m_thread_cond.wait_for(lock, std::chrono::milliseconds(wait_time)) != std::cv_status::timeout)
-                    {
-                        // 被notify唤醒
-                        continue;
-                    }
-                }
-                else if (wait_time == 0)
-                {
-                    std::unique_lock<std::recursive_mutex> lock(m_thread_mutex);
-                    m_thread_cond.wait(lock);
+                    // 当前可以设置成正在停止状态
+                    m_work_state.compare_exchange_strong(work_state, IS_STOPING, std::memory_order_seq_cst);
                     continue;
                 }
                 else
                 {
-                    deal_neg_wait_time();
-                    continue;
+                    long wait_time = get_wait_time();
+                    if (wait_time > 0)
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(wait_time));
+                    }
+                    else if (wait_time == 0)
+                    {
+                        std::unique_lock<std::recursive_mutex> lock(m_thread_mutex);
+                        m_thread_cond.wait(lock);
+                        continue;
+                    }
+                    else
+                    {
+                        deal_neg_wait_time();
+                        continue;
+                    }
+                }
+            }
+            m_thread_state.store(THREAD_RUNNING);
+            {
+                std::lock_guard<std::mutex> lock(m_rsc_mutex);
+                int result = work_func(); //-1异常，0正常处理，1处理结束
+                if (result == -1)
+                {
+                    stop_0();
+                }
+                else if (result == 1)
+                {
+                    try_stop_0();
                 }
             }
         }
-        m_thread_state.store(THREAD_RUNNING);
-        {
-            std::lock_guard<std::mutex> lock(m_rsc_mutex);
-            int result = work_func(); //-1异常，0正常处理，1处理结束
-            if (result == -1)
-            {
-                stop_0();
-            }
-            else if (result == 1)
-            {
-                try_stop_0();
-            }
-        }
+    }
+    else
+    {
+        stop_0();
     }
     // 等待子线程结束
     for (auto thread : m_child_list)
@@ -292,7 +290,7 @@ void ThreadChain::thread_func()
         }
     }
     std::lock_guard<std::mutex> lock(m_rsc_mutex);
-    clean_func(); 
+    clean_func();
     // 修改全局状态
     if (is_root(shared_from_this())) // 只有顶层可以使用
     {

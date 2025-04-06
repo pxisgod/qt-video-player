@@ -17,9 +17,6 @@ void VRender::set_video_frame_scaler(std::shared_ptr<VideoFrameScaler> frame_sca
  bool VRender::stop_condition(){
     return m_frame_queue->is_empty();
  }
- bool VRender::notify_condition(){
-   return m_frame_queue->readable_size()==1;
-}
 long VRender::get_wait_time(){
    return 0;
 }

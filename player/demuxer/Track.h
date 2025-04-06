@@ -7,6 +7,7 @@
 #include "EventListener.h"
 #include "ThreadChain.h"
 #include "SyncClock.h"
+#include <iostream>
 
 class Demuxer;
 
@@ -29,13 +30,15 @@ public:
 protected:
     virtual bool pause_condition();
     virtual bool stop_condition();
-    virtual bool notify_condition();
     virtual long get_wait_time();
     virtual void deal_neg_wait_time();
     virtual int init();
     virtual void seek(long position);
     virtual int work_func();
     virtual void clean_func();
+    virtual void notify_debug(){
+        std::cout<< "Track::notify_debug" << std::endl;
+    }
 private:
     void append_packet(std::shared_ptr<AVPacket> packet);
     int create_scaler();

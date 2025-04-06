@@ -20,9 +20,7 @@ bool Track::stop_condition()
     return m_packet_queue->is_empty();
 }
 
-bool Track::notify_condition(){
-    return  !m_packet_queue->is_empty() && !m_frame_queue->is_full();
-}
+
 long Track::get_wait_time(){
     return 0;
 }
@@ -125,7 +123,7 @@ int Track::work_func()
     {
         int frame_count = 0;
         auto scaler = m_scaler.lock();
-        if (scaler==nullptr)
+        if (!scaler)
         {
             return 0;
         }

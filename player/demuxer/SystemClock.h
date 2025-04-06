@@ -12,7 +12,7 @@ public:
 
     virtual double get_clock_time()
     {
-        return m_clock_drift + get_system_current_time();
+        return m_clock_drift;
     }
     virtual void set_clock_time(double seek_time){
         m_clock_real_time = get_system_current_time();

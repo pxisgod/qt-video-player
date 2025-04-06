@@ -3,6 +3,7 @@
 #include "ThreadChain.h"
 #include "util/common.h"
 #include "SyncClock.h"
+#include <iostream>
 
 
 class VideoFrameScaler;
@@ -13,12 +14,14 @@ public:
     virtual void resize_window(){};
     virtual bool pause_condition();
     virtual bool stop_condition();
-    virtual bool notify_condition();
     virtual long get_wait_time();
     virtual void deal_neg_wait_time();
     virtual int init();
     virtual void seek(long position);
     virtual void clean_func();
+    virtual void notify_debug(){
+        std::cout<< "VRender::notify_debug" << std::endl;
+    }
 protected:
     std::shared_ptr<VideoFrameScaler> m_frame_scaler;
     std::shared_ptr<FrameQueue> m_frame_queue;

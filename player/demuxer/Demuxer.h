@@ -4,6 +4,7 @@
 #include "util/common.h"
 #include "ThreadChain.h"
 #include "SystemClock.h"
+#include <iostream>
 
 class Track;
 
@@ -20,7 +21,6 @@ public:
 
     virtual bool pause_condition();
     virtual bool stop_condition();
-    virtual bool notify_condition();
     virtual long get_wait_time();
     virtual void deal_neg_wait_time();
     virtual int init();
@@ -32,6 +32,10 @@ public:
     std::shared_ptr<AVFormatContext> get_av_format_context(){
         return m_av_format_context;
     }
+    virtual void notify_debug(){
+        std::cout<< "Demuxer::notify_debug" << std::endl;
+    }
+
 private:
     std::string m_url;
     std::shared_ptr<AVFormatContext> m_av_format_context;
