@@ -53,7 +53,7 @@ typedef struct PakcetQueue
     bool is_full()
     {
         return (w_index < b_index && w_index + reserve_size + 1 >= b_index) ||
-               (w_index > b_index && (w_index + reserve_size + 1) % MAX_PACKET_QUEUE_SIZE >= b_index);
+               (w_index > b_index && (w_index + reserve_size + 1-MAX_PACKET_QUEUE_SIZE >= b_index));
     };
     void append_packet(std::shared_ptr<AVPacket> packet)
     {
