@@ -46,7 +46,7 @@ public:
 protected:
     virtual void deal_event(Event event){};
 private:
-    EventNotifier<Event>*  delegate;
+    EventNotifier<Event>*  delegate=nullptr;
 };
 
 template<typename Event>

@@ -17,6 +17,7 @@ VideoPlayerWidget::VideoPlayerWidget(QWidget *parent)
     
     m_play_button->setIcon(QIcon(":/images/stop.png"));//初始设置为停止图标
     m_play_button->setIconSize(QSize(32, 32));
+    m_play_button->setEnabled(false);
 
     setupUI();
 

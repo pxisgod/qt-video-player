@@ -155,7 +155,8 @@ long SDLVideoRender::get_wait_time()
 }
 
 void SDLVideoRender::deal_after_wait(){
-    m_clock->set_clock_time();
+
+   // m_clock->set_clock_time();
 }
 
 void SDLVideoRender::deal_neg_wait_time()
