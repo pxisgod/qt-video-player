@@ -11,11 +11,15 @@ bool Demuxer::stop_condition(){
 long Demuxer::get_wait_time(){
     return 0;
 }
+void Demuxer::deal_after_wait(){
+    m_clock->set_clock_time();
+}
 void Demuxer::deal_neg_wait_time(){
 }
 
 int Demuxer::init()
 {
+    ThreadChain::init(); //设置消息链
     int result = 0;
 
     // 1.创建封装格式上下文
@@ -46,6 +50,7 @@ void Demuxer::seek(long position)
     int64_t seek_min = INT64_MIN;
     int64_t seek_max = INT64_MAX;
     avformat_seek_file(m_av_format_context.get(), -1, seek_min, seek_target, seek_max, 0);
+    m_clock->set_clock_time(position); //设置主时钟
 }
 
 int Demuxer::work_func()
@@ -107,6 +112,7 @@ int Demuxer::create_track_list()
             /*
         case AVMEDIA_TYPE_AUDIO:
             track = std::make_shared<Track>(i, demuxer, AVMEDIA_TYPE_AUDIO, m_packet_queue0);
+            track->get_clock()->set_master_clock(m_clock);
             add_thread(track);
             if (track->init() != 0) // 初始化失败
             {
@@ -138,5 +144,6 @@ int Demuxer::create_track_list()
             break;
         }
     }
+    emit_event(ThreadMsg{INIT_DONE, m_duration}); //发送初始化完成事件
     return 0;
 }

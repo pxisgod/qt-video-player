@@ -1,4 +1,6 @@
+qt5_add_resources(RESOURCES resources.qrc)
 file(GLOB SRC_FILE ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+list(APPEND SRC_FILE ${RESOURCES})
 set(TARGET_NAME "video_player")
 add_executable(${TARGET_NAME} ${SRC_FILE})
 target_include_directories(${TARGET_NAME} 

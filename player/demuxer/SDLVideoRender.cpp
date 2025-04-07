@@ -141,7 +141,7 @@ bool SDLVideoRender::pause_condition()
 }
 long SDLVideoRender::get_wait_time()
 {
-    /* 测试用*/
+    /* 测试用
     if(m_sleep_time != 0)
     {
         return 10;
@@ -149,9 +149,13 @@ long SDLVideoRender::get_wait_time()
     else
     {
         return 0;
-    }
+    }*/
     
-    //return m_sleep_time;
+    return m_sleep_time;
+}
+
+void SDLVideoRender::deal_after_wait(){
+    m_clock->set_clock_time();
 }
 
 void SDLVideoRender::deal_neg_wait_time()

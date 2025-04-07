@@ -34,6 +34,12 @@ public:
         m_clock_drift = seek_time - m_clock_real_time;
         m_pts=seek_time/av_q2d(m_time_base)/1000; //计算pts
     }
+    
+    virtual void set_clock_time(){
+        long cur_time = get_system_current_time();
+        m_clock_drift = m_clock_drift + m_clock_real_time-cur_time;
+        m_clock_real_time=cur_time;
+    }
 
     double get_sleep_time(long pts)
     {

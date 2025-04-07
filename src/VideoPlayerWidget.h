@@ -8,13 +8,8 @@
 #include <QListWidget>
 #include <QMediaPlayer>
 #include "VideoPlayer.h"
+#include "ProgressWidget.h"
 
-enum LoopType{
-    LIST_NEXT,
-    ONE_FINISH,
-    ONE_CIRCLE,
-    LIST_CIRCLE
-};
 
 class VideoPlayerWidget : public QWidget {
     Q_OBJECT
@@ -22,25 +17,21 @@ class VideoPlayerWidget : public QWidget {
 public:
     explicit VideoPlayerWidget(QWidget *parent = nullptr);
     ~VideoPlayerWidget();
-
-    void addToPlaylist(const QString &filePath); // 添加文件到播放列表
-
+    void add_to_play_list(const QString &file_path); // 添加文件到播放列表
 private slots:
-    void playPause();
-    void setPosition(int position);
-    void handleItemDoubleClicked(QListWidgetItem *item);
-    void handleMediaEnd();
-
+    void play_or_pause() ;
+    void button_handle_play() ;
+    void button_handle_pause() ;
+    void button_handle_stop() ;
+    void handle_item_double_clicked(QListWidgetItem *item) ;
 private:
-    VideoPlayer *mediaPlayer;
-    QWidget *videoWidget;
-    QSlider *progressSlider;
-    QPushButton *playPauseButton;
-    QListWidget *playlist;
+    VideoPlayer *m_video_player;
+    QWidget *m_widget;
+    ProgressWidget *m_progress_slider;
+    QPushButton *m_play_button;
+    QListWidget *m_play_list;
 
     void setupUI();
-    void loadPlaylist();
-    int loopType=LIST_NEXT;
 };
 
 #endif // VIDEOPLAYERWIDGET_H

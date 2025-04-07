@@ -7,6 +7,7 @@
 #include <list>
 #include <atomic>
 #include <queue>
+#include "EventListener.h"
 
 enum ThreadState
 {
@@ -25,12 +26,15 @@ enum WorkState
 
 enum PlayState
 {
+    INITED,
     PLAYING,
     PAUSE,
     STOPPED
 };
 
-class ThreadChain : public std::enable_shared_from_this<ThreadChain>
+class ThreadChain : public std::enable_shared_from_this<ThreadChain>,
+                    public EventListener<ThreadMsg>,
+                    public EventNotifier<ThreadMsg>
 {
 public:
     using S_Ptr = std::shared_ptr<ThreadChain>;
@@ -110,14 +114,14 @@ public:
     void add_thread(ThreadChain::S_Ptr child); 
     void notify();
     void sync();
-    void init_0();
+    int init_0();
     void start_0();
-    void stop_0();
-    void play_0();
-    void pause_0();
-    void seek_0(long position);
-private: 
+    int stop_0();
+    int play_0();
+    int pause_0();
+    int seek_0(long position);
     void uninit_0();
+private: 
     void try_stop_0();
     static void seek_0_l(std::list<ThreadChain::S_Ptr> leaf_list, long position);
 protected:
@@ -125,8 +129,12 @@ protected:
     virtual bool pause_condition() { return false; }
     virtual bool stop_condition() { return false; }
     virtual long get_wait_time(){return 0;}
+    virtual void deal_after_wait(){}
     virtual void deal_neg_wait_time(){}
-    virtual int init() {return 0;}
+    virtual int init() {
+        set_delegate(this);
+        return 0;
+    }
     virtual void uninit();
     virtual void start();
     virtual void stop();
@@ -140,6 +148,8 @@ protected:
     virtual void clean_func() {} //清理资源
 public:
     std::mutex m_rsc_mutex;                    // 资源锁
+    std::mutex m_play_mutex;            // 全局播放锁,只有顶层可以使用
+    int m_play_state;                   // 播放状态，只有顶层可以使用
 private:
     int m_level; // 在树中的层级
     std::list<ThreadChain::W_Ptr> m_child_list;
@@ -149,8 +159,6 @@ private:
     std::atomic<int> m_work_state;             // 工作状态
     std::recursive_mutex m_thread_mutex;       // 暂停条件锁
     std::condition_variable_any m_thread_cond; // 暂停条件
-    std::mutex m_play_mutex;            // 全局播放锁,只有顶层可以使用
-    int m_play_state;                   // 播放状态，只有顶层可以使用
     static thread_local std::list<ThreadChain::S_Ptr> m_all_thread; //所有线程的强引用
 };
 

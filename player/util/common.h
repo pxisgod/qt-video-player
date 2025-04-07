@@ -19,15 +19,6 @@ extern "C"
 #include <condition_variable>
 #include <memory>
 
-enum PlayerCBType
-{
-    MSG_INIT_ERROR,    // 解码器初始化失败
-    MSG_DEMUXER_START, // 解码器初始化成功
-    MSG_DEMUXER_STOP,  // 关闭解码器
-    MSG_RENDER_TIME,   // 完成渲染时间
-    MSG_PLAY_FINISH,   // 播放完成
-};
-
 #define MAX_PACKET_QUEUE_SIZE 256
 #define MAX_FRAME_QUEUE_SIZE 256
 #define MAX_PACKET_RESERVE_SIZE 128
@@ -183,12 +174,5 @@ typedef struct FrameQueue
         return (w_index - b_index + MAX_PACKET_QUEUE_SIZE) % MAX_PACKET_QUEUE_SIZE;
     }
 } FrameQueue;
-
-// 解复用消息类型
-typedef struct DemuxerMsg
-{
-    int msgType;
-    long time;
-} DemuxerMsg;
 
 #endif

@@ -17,6 +17,7 @@ public:
     virtual void resize_window();
     virtual bool pause_condition();
     virtual long get_wait_time();
+    virtual void deal_after_wait();
     virtual void deal_neg_wait_time();
     const SDL_PixelFormatEnum DST_PIX_FORMAT=SDL_PIXELFORMAT_IYUV;
 private:

@@ -9,125 +9,107 @@
 
 VideoPlayerWidget::VideoPlayerWidget(QWidget *parent)
     : QWidget(parent),
-      mediaPlayer(new VideoPlayer(this)),
-      videoWidget(new QMainWindow(this)),
-      progressSlider(new QSlider(Qt::Horizontal, this)),
-      playPauseButton(new QPushButton("Play", this)),
-      playlist(new QListWidget(this)) {
+      m_video_player(new VideoPlayer(this)),
+      m_widget(new QMainWindow(this)),
+      m_progress_slider(new ProgressWidget(this)),
+      m_play_button(new QPushButton("Play", this)),
+      m_play_list(new QListWidget(this)) {
+    
+    m_play_button->setIcon(QIcon(":/images/stop.png"));//初始设置为停止图标
+    m_play_button->setIconSize(QSize(32, 32));
 
     setupUI();
 
-    // Connect signals and slots
-    connect(playPauseButton, &QPushButton::clicked, this, &VideoPlayerWidget::playPause);
-    connect(progressSlider, &QSlider::sliderMoved, this, &VideoPlayerWidget::setPosition);
-    connect(playlist, &QListWidget::itemDoubleClicked, this, &VideoPlayerWidget::handleItemDoubleClicked);
+    //进度条相关的信号和槽连接
+    connect(m_progress_slider, &ProgressWidget::seek, m_video_player, &VideoPlayer::seek);
+    connect(m_video_player, &VideoPlayer::init_done, m_progress_slider, &ProgressWidget::set_duration);
+    connect(m_video_player, &VideoPlayer::switch_playing, m_progress_slider, &ProgressWidget::start_timer);
+    connect(m_video_player, &VideoPlayer::switch_pause, m_progress_slider, &ProgressWidget::stop_timer);
+    connect(m_video_player, &VideoPlayer::switch_stop, m_progress_slider, &ProgressWidget::stop_timer);
 
 
-    connect(mediaPlayer, &VideoPlayer::decoderInitError, this, [this]() {
-        mediaPlayer->uninit();
-        mediaPlayer->setPauseState(STOP);
-    });
-    connect(mediaPlayer, &VideoPlayer::decoderInitReady, this, [this](long duration) {
-        progressSlider->setRange(0,duration);
-        progressSlider->setValue(0);
-    });
-    connect(mediaPlayer, &VideoPlayer::renderTimeChanged, this, [this](long renderTime){
-        progressSlider->setValue(static_cast<int>(renderTime));
-    });
-    /**
-    connect(mediaPlayer, &VideoPlayer::pauseTime, this, [this](long pauseTime) {
-        progressSlider->setValue(static_cast<int>(pauseTime));
-    });
-     */
-    connect(mediaPlayer, &VideoPlayer::playDone, this, [this]() {
-        if(mediaPlayer->getPauseState()==PLAYING){
-            mediaPlayer->uninit();
-            mediaPlayer->setPauseState(STOP);
-            playPauseButton->setText("Stop");
-            switch (loopType)
-            {
-            case LIST_NEXT:
-                //获取列表中下一项播放
-                break;
-            default:
-                break;
-            }
-        }
-    });
-    /**
-    connect(mediaPlayer, &VideoPlayer::decoderDone, this,[this](){
-
-    });
-    */
+    //播放列表相关的信号和槽连接
+    connect(m_play_list, &QListWidget::itemDoubleClicked, this, &VideoPlayerWidget::handle_item_double_clicked);
     
 
-    loadPlaylist();
+    //播放按钮相关的信号和槽连接
+    connect(m_play_button, &QPushButton::clicked, this, &VideoPlayerWidget::play_or_pause);
+    connect(m_video_player, &VideoPlayer::switch_playing, this, &VideoPlayerWidget::button_handle_play);
+    connect(m_video_player, &VideoPlayer::switch_pause, this, &VideoPlayerWidget::button_handle_pause);
+    connect(m_video_player, &VideoPlayer::switch_stop, this, &VideoPlayerWidget::button_handle_stop);
 }
 
 VideoPlayerWidget::~VideoPlayerWidget() {}
 
-void VideoPlayerWidget::setupUI() {
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
 
-    // Video display
-    mediaPlayer->setVideoOutput(videoWidget);
-    mainLayout->addWidget(videoWidget);
-
-    // Playback controls
-    QHBoxLayout *controlsLayout = new QHBoxLayout();
-    controlsLayout->addWidget(playPauseButton);
-    controlsLayout->addWidget(progressSlider);
-    mainLayout->addLayout(controlsLayout);
-
-    // Playlist
-    mainLayout->addWidget(playlist);
-
-    setLayout(mainLayout);
-    videoWidget->show();
+//播放按钮的槽函数和函数
+void VideoPlayerWidget::play_or_pause() {
+    if(m_video_player->get_play_state() == PLAYING) {
+        m_video_player->pause();
+    } else if(m_video_player->get_play_state() == PAUSE){
+        m_video_player->play();
+    }
 }
 
-void VideoPlayerWidget::loadPlaylist() {
-    //todo: 加载保存的播放列表
+void VideoPlayerWidget::button_handle_play(){
+    m_play_button->setIcon(QIcon(":/images/playing.png"));
+    m_play_button->setIconSize(QSize(32, 32));
+    m_play_button->setEnabled(true);
+}
+void VideoPlayerWidget::button_handle_pause() {
+    m_play_button->setIcon(QIcon(":/images/pause.png"));
+    m_play_button->setIconSize(QSize(32, 32));
+    m_play_button->setEnabled(true);
+}
+void VideoPlayerWidget::button_handle_stop() {
+    m_play_button->setIcon(QIcon(":/images/stop.png"));
+    m_play_button->setIconSize(QSize(32, 32));
+    m_play_button->setEnabled(false);
 }
 
-void VideoPlayerWidget::addToPlaylist(const QString &filePath) {
+
+
+//播放列表相关的槽和函数
+void VideoPlayerWidget::add_to_play_list(const QString &filePath) {
     QFileInfo fileInfo(filePath);
     QString fileName = fileInfo.fileName(); // 获取文件名
 
     QListWidgetItem *item = new QListWidgetItem(fileName);
     item->setData(Qt::UserRole, filePath); // 保存实际文件路径
-    playlist->addItem(item);
+    m_play_list->addItem(item);
 }
 
-void VideoPlayerWidget::playPause() {
-    if (mediaPlayer->getPauseState() == PLAYING) {
-        mediaPlayer->pause();
-        playPauseButton->setText("Play");
-    } else if(mediaPlayer->getPauseState() == PAUSE){
-        mediaPlayer->play();
-        playPauseButton->setText("Pause");
-    }else{
-
-    }
-}
-
-void VideoPlayerWidget::setPosition(int position) {
-    mediaPlayer->seek(position);
-}
-
-void VideoPlayerWidget::handleItemDoubleClicked(QListWidgetItem *item) {
-    mediaPlayer->uninit();
+void VideoPlayerWidget::handle_item_double_clicked(QListWidgetItem *item) {
     // 从 QListWidgetItem 的 data 中获取实际文件路径
-    QString filePath = item->data(Qt::UserRole).toString();
-    mediaPlayer->init(filePath);
-    mediaPlayer->play();
-    playPauseButton->setText("Pause");
-}
-
-void VideoPlayerWidget::handleMediaEnd() {
-    int currentRow = playlist->currentRow();
-    if (currentRow + 1 < playlist->count()) {
-        playlist->setCurrentRow(currentRow + 1);
-        handleItemDoubleClicked(playlist->currentItem());
+    QString file_path = item->data(Qt::UserRole).toString();
+    if(m_video_player->get_play_state()==STOPPED || m_video_player->stop()==0){
+        m_video_player->play(file_path);
     }
 }
+
+
+void VideoPlayerWidget::setupUI() {
+    QHBoxLayout *mainLayout = new QHBoxLayout(this); // 修改为水平布局
+
+    // 左侧布局：视频显示和播放控制
+    QVBoxLayout *leftLayout = new QVBoxLayout();
+
+    // Video display
+    m_video_player->setVideoOutput(m_widget);
+    leftLayout->addWidget(m_widget);
+
+    // Playback controls
+    QHBoxLayout *controlsLayout = new QHBoxLayout();
+    controlsLayout->addWidget(m_play_button);
+    controlsLayout->addWidget(m_progress_slider);
+    leftLayout->addLayout(controlsLayout);
+
+    mainLayout->addLayout(leftLayout); // 添加左侧布局
+
+    // 右侧布局：播放列表
+    mainLayout->addWidget(m_play_list); // 播放列表移动到右边
+
+    setLayout(mainLayout);
+    m_widget->show();
+}
+

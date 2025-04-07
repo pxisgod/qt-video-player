@@ -18,6 +18,11 @@ public:
         m_clock_real_time = get_system_current_time();
         m_clock_drift = seek_time - m_clock_real_time;
     }
+    virtual void set_clock_time(){
+        long cur_time = get_system_current_time();
+        m_clock_drift = m_clock_drift + m_clock_real_time-cur_time;
+        m_clock_real_time=cur_time;
+    }
 
 private:    
     double m_clock_drift;

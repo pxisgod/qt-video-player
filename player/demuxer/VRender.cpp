@@ -23,12 +23,14 @@ long VRender::get_wait_time(){
 void VRender::deal_neg_wait_time(){
 }
  int VRender::init(){
+   ThreadChain::init(); //设置消息链
     m_frame_scaler->init_sws_context(m_screen_width,m_screen_height);
     return 0;
  }
 
  void VRender::seek(long position){
     clean_func();
+    m_clock->set_clock_time(position); //设置视频时钟
  }
 
  void VRender::clean_func(){

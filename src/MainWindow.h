@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QListWidget>
 #include "VideoPlayerWidget.h"
+#include "ProgressWidget.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT

@@ -26,6 +26,7 @@ void Scaler::deal_neg_wait_time(){
 }
 int Scaler::init(){
     m_scale_frame_queue = std::make_shared<FrameQueue>();//创建scale后的frame_queue
+    ThreadChain::init(); //设置消息链
     return 0;
 }
 void Scaler::seek(long position){

@@ -7,9 +7,10 @@
 #include <QMenu>
 #include <QLabel>
 #include "FileMenu.h"
+#include "ProgressWidget.h"
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent),playerWidget(new VideoPlayerWidget(this)) {
+    : QMainWindow(parent), playerWidget(new VideoPlayerWidget(this)) {
 
     // 创建菜单栏
     QMenuBar *menuBar = new QMenuBar(this);
@@ -24,21 +25,18 @@ MainWindow::MainWindow(QWidget *parent)
     // 关联 filesSelected 信号到 lambda 表达式
     connect(fileMenu, &FileMenu::filesSelected, this, [this](const QStringList &files) {
         for (const QString &file : files) {
-            playerWidget->addToPlaylist(file); // 调用 addToPlaylist 方法
+            playerWidget->add_to_play_list(file); 
         }
     });
 
     setupUI();
-
-    // 设置窗口为全屏
-    //showFullScreen();
 }
 
 MainWindow::~MainWindow() {}
 
 void MainWindow::setupUI() {
 
-    QWidget *mainWindow=new QWidget(this);
+    QWidget *mainWindow = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout(mainWindow);
     mainLayout->addWidget(playerWidget);
 

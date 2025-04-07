@@ -64,7 +64,6 @@ endif()
 
 
 
-
 add_subdirectory(player)
 add_subdirectory(src)
 find_package(Qt5 5.12 REQUIRED COMPONENTS Test)

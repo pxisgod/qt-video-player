@@ -30,6 +30,7 @@ void Track::deal_neg_wait_time(){
 
 int Track::init()
 {
+    ThreadChain::init(); //设置消息链
     // 5.获取解码器参数
     AVCodecParameters *codecParameters = m_demuxer->get_av_format_context()->streams[m_stream_id]->codecpar;
 

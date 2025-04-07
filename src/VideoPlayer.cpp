@@ -1,88 +1,69 @@
 #include "VideoPlayer.h"
+#include "SDLVideoRender.h"
+#include "VideoFrameScaler.h"
 #include <QDebug>
 
-VideoPlayer::VideoPlayer(QObject *parent)
-    : QObject(parent), pauseState(STOP) {}
+void VideoPlayer::setVideoOutput(QWidget *widget)
+{
+    this->m_widget = widget;
+}
 
-void VideoPlayer::init(const QString &filePath) {
-    mediaPlayer = new FFMediaPlayer();
-    if(widget){
-        mediaPlayer->setWidget(widget);
+int VideoPlayer::play(const QString &file_path)
+{
+    int ret = -1;
+    std::shared_ptr<SDLVideoRender> videoRender = std::make_shared<SDLVideoRender>(m_widget);
+    VideoFrameScaler::set_thread_render(videoRender);
+    if (m_demuxer->init_0(file_path.toStdString()) == 0)
+    {
+        m_demuxer->start_0();
+        ret = 0;
     }
-    mediaPlayer->Init(filePath.toStdString().data(),VIDEO_RENDER_ANWINDOW,this,callback);
+    VideoFrameScaler::remove_thread_render();
+    return ret;
+}
+int VideoPlayer::play()
+{
+    return m_demuxer->play_0();
 }
 
-void VideoPlayer::uninit() {
-    if (mediaPlayer!=nullptr) {
-        mediaPlayer->UnInit();
-        delete mediaPlayer;
-        mediaPlayer = nullptr;
-    }
+int VideoPlayer::pause()
+{
+    return m_demuxer->pause_0();
 }
 
-void VideoPlayer::setVideoOutput(QWidget *videoWidget) {
-    this->widget=videoWidget;
+int VideoPlayer::stop()
+{
+    return m_demuxer->stop_0();
 }
 
-void VideoPlayer::play() {
-    if (mediaPlayer!=nullptr) {
-        mediaPlayer->Play();
-        pauseState = PLAYING;
-    }
+int VideoPlayer::seek(qint64 position)
+{
+    return m_demuxer->seek_0(position);
 }
 
-void VideoPlayer::pause() {
-    if (mediaPlayer!=nullptr) {
-        mediaPlayer->Pause();
-        pauseState=PAUSE;
-    }
+int VideoPlayer::resize(int width, int height)
+{
+    // todo:
+    return 0;
 }
 
-void VideoPlayer::seek(qint64 position) {
-    if (mediaPlayer!=nullptr) {
-        mediaPlayer->SeekToPosition(position);
-    }
+void VideoPlayer::deal_event(ThreadMsg event)
+{
+    switch (event.m_msg_type)
+    {
+    case INIT_DONE:
+        emit init_done(event.m_msg_time/1000); //转换成秒
+        break;
+    case SWITCH_PLAYING:
+        emit switch_playing();
+        break;
+    case SWITCH_PAUSE:
+        emit switch_pause();
+        break;
+    case SWITCH_STOP:
+        emit switch_stop();
+        break;
+    default:
+        break;
+    };
 }
-
-void VideoPlayer::resize(int width, int height) {
-    if (mediaPlayer!=nullptr) {
-        mediaPlayer->Resize(width, height);
-    }
-}
-
-
-void VideoPlayer::callback(void * context,int type, float time) {
-    VideoPlayer *player=static_cast<VideoPlayer *>(context); 
-    player->emitSignal(type,time);
-}
-
-
-void VideoPlayer::emitSignal(int type,float time){
-    switch (type) {
-        case MSG_DECODER_INIT_ERROR:
-            emit decoderInitError();
-            break;
-        case MSG_DECODER_READY:
-            emit decoderInitReady(time);
-            break;
-        case MSG_DECODER_DONE:
-            emit decoderDone();
-            break;
-        case MSG_DECODING_TIME:
-            emit decodeTimeChanged(time);
-            break;
-        case MSG_RENDER_TIME:
-            emit renderTimeChanged(time);
-            break;
-        case MSG_PAUSE_TIME:
-            emit pauseTime(time);
-            break;
-        case MSG_PLAY_DONE:
-            emit playDone();
-            break;
-        default:
-            //qDebug() << "Unknown callback type:" << type;
-            break;
-    }
-}
-
