@@ -16,7 +16,7 @@ void ThreadChain::notify()
     int thread_state = m_thread_state.exchange(THREAD_RUNNING, std::memory_order_seq_cst);
     if (thread_state == THREAD_WAITING) // 实际唤醒
     {
-        notify_debug();
+        //notify_debug();
         m_thread_cond.notify_one();
     }
     // else是提前唤醒，因为此时notify在wait前面执行了
@@ -39,7 +39,7 @@ int ThreadChain::init_0() // 只有顶层可以使用
         std::lock_guard<std::mutex> lock(m_play_mutex);
         if (m_play_state == STOPPED)
         {
-            m_play_state=INITED;
+            m_play_state = INITED;
             if (init() != 0)
             {
                 uninit_0(); // 全部去除初始化
@@ -53,7 +53,7 @@ int ThreadChain::init_0() // 只有顶层可以使用
 
 void ThreadChain::uninit_0() // 只有顶层可以使用
 {
-    m_play_state=STOPPED;
+    m_play_state = STOPPED;
     // 从子向父遍历
     auto leaf_list = get_all_thread(shared_from_this());
     leaf_list.sort();
@@ -110,7 +110,7 @@ int ThreadChain::stop_0()
 {
     auto root = get_root(shared_from_this());
     std::lock_guard<std::mutex> lock(root->m_play_mutex);
-    if (root->m_play_state==PAUSE || root->m_play_state==PLAYING)
+    if (root->m_play_state == PAUSE || root->m_play_state == PLAYING)
     {
         m_play_state = STOPPED;
         // 从子向父遍历
@@ -165,7 +165,8 @@ int ThreadChain::seek_0(long position) // 只有顶层可以使用
                 // 从子向父遍历
                 auto leaf_list = get_all_thread(shared_from_this());
                 leaf_list.sort();
-                seek_0_l(leaf_list, position);
+                auto list_copy=leaf_list;
+                seek_0_l(leaf_list,list_copy, position);
             }
         }
         return 0;
@@ -173,17 +174,29 @@ int ThreadChain::seek_0(long position) // 只有顶层可以使用
     return -1;
 }
 
-void ThreadChain::seek_0_l(std::list<ThreadChain::S_Ptr> leaf_list, long position)
+void ThreadChain::seek_0_l(std::list<ThreadChain::S_Ptr> & leaf_list,std::list<ThreadChain::S_Ptr> & list_copy, long position)
 {
     if (!leaf_list.empty())
     {
-        ThreadChain::S_Ptr thread = leaf_list.front();
+        ThreadChain::S_Ptr thread = leaf_list.back();
         std::lock_guard<std::mutex> lock(thread->m_rsc_mutex); // 反向获取所有资源锁，全部获取后才会开始调用seek方法
-        leaf_list.pop_front();
-        seek_0_l(leaf_list, position);
-        thread->seek(position); // 正向遍历seek方法
+        leaf_list.pop_back();
+        seek_0_l(leaf_list,list_copy, position);
+    }else{
+        seek_1_l(list_copy,position);
     }
 }
+
+void ThreadChain::seek_1_l(std::list<ThreadChain::S_Ptr> & list_copy, long position){
+    if (!list_copy.empty())
+    {
+        ThreadChain::S_Ptr thread = list_copy.back();
+        list_copy.pop_back();
+        thread->seek(position);
+        seek_1_l(list_copy, position);
+    }
+}
+
 
 void ThreadChain::uninit()
 {
@@ -221,7 +234,6 @@ void ThreadChain::try_stop()
         }
     }
 }
-
 void ThreadChain::play()
 {
     int expected = m_work_state.load(std::memory_order_seq_cst);
@@ -229,11 +241,12 @@ void ThreadChain::play()
     {
         if (m_work_state.compare_exchange_strong(expected, IS_WORKING, std::memory_order_seq_cst))
         {
+            std::lock_guard<std::mutex> lock(m_rsc_mutex);
+            adjust_clock();
             notify();
         }
     }
 }
-
 void ThreadChain::pause()
 {
     int expected = m_work_state.load(std::memory_order_seq_cst);

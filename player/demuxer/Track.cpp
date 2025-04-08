@@ -112,6 +112,7 @@ int Track::create_scaler()
 void Track::seek(long position)
 {
     clean_func();
+    ThreadChain::seek(position);
 }
 int Track::work_func()
 {

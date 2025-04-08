@@ -123,7 +123,8 @@ public:
     void uninit_0();
 private: 
     void try_stop_0();
-    static void seek_0_l(std::list<ThreadChain::S_Ptr> leaf_list, long position);
+    static void seek_0_l(std::list<ThreadChain::S_Ptr> & leaf_list,std::list<ThreadChain::S_Ptr> & list_copy, long position);
+    static void seek_1_l(std::list<ThreadChain::S_Ptr> & list_copy, long position);
 protected:
     virtual void notify_debug(){}
     virtual bool pause_condition() { return false; }
@@ -141,11 +142,16 @@ protected:
     virtual void try_stop();
     virtual void play();
     virtual void pause();
-    virtual void seek(long position) {}
+    virtual void seek(long position) {
+        adjust_clock(position*1000);
+        notify();
+    }
     virtual void thread_func();
     virtual int thread_init(){return 0;}
     virtual int work_func() { return 0; } //-1异常，0正常处理，1处理结束
     virtual void clean_func() {} //清理资源
+    virtual void adjust_clock(long position) {} //调整时钟
+    virtual void adjust_clock() {} //调整时钟
 public:
     std::mutex m_rsc_mutex;                    // 资源锁
     std::mutex m_play_mutex;            // 全局播放锁,只有顶层可以使用

@@ -31,6 +31,7 @@ int Scaler::init(){
 }
 void Scaler::seek(long position){
     clean_func();
+    ThreadChain::seek(position);
 }
 void Scaler::clean_func(){
     m_scale_frame_queue->clear();

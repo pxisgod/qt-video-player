@@ -1,44 +1,51 @@
 #ifndef SYNC_CLOCK_H
 #define SYNC_CLOCK_H
 #include "Clock.h"
+#include <iostream>
 class SyncClock : public Clock
 {
 public:
     SyncClock(AVRational m_time_base)
     {
         this->m_time_base = m_time_base;
-        set_clock_time(0);
+        init_clock(0);
     }
     virtual ~SyncClock(){}
     void set_master_clock(std::shared_ptr<Clock> master_clock)
     {
         m_master_clock = master_clock;
     }
+    std::shared_ptr<Clock> get_master_clock(){
+        return m_master_clock;
+    }
+
+    double get_clock()
+    {
+        return m_clock_start_time;
+    }
+
+    void init_clock(double seek_time)
+    {
+        long cur_time = get_system_current_time();
+        m_clock_start_time=cur_time-seek_time;
+        m_seek_time=seek_time; //记录seek时间
+        m_pts=seek_time/av_q2d(m_time_base)/1000; //计算pts
+    }
 
     void set_clock(long pts)
     {
-        m_clock_real_time = get_system_current_time();
+        long cur_time = get_system_current_time();
         m_pts = pts;
-        double pts_time = ((pts * av_q2d(m_time_base)) * 1000);
-        m_clock_drift = pts_time - m_clock_real_time;
-    }
-
-    double get_clock_time()
-    {
-        return m_clock_drift;
-    }
-
-    void set_clock_time(double seek_time)
-    {
-        m_clock_real_time = get_system_current_time();
-        m_clock_drift = seek_time - m_clock_real_time;
-        m_pts=seek_time/av_q2d(m_time_base)/1000; //计算pts
+        m_seek_time = ((pts * av_q2d(m_time_base)) * 1000);
+        m_clock_start_time = cur_time-m_seek_time;
+        if(m_master_clock){
+            m_master_clock->set_clock(pts);
+        }
     }
     
-    virtual void set_clock_time(){
+    virtual void restart_clock(){
         long cur_time = get_system_current_time();
-        m_clock_drift = m_clock_drift + m_clock_real_time-cur_time;
-        m_clock_real_time=cur_time;
+        m_clock_start_time=cur_time-m_seek_time; // 修改起始时间
     }
 
     double get_sleep_time(long pts)
@@ -48,8 +55,8 @@ public:
         if(compute_delay<=0){
             return -1;
         }
-        double current_real_time = get_system_current_time();
-        double sleep_time = m_clock_real_time + compute_delay - current_real_time;
+        double cur_time = get_system_current_time();
+        double sleep_time = m_clock_start_time +m_seek_time + compute_delay - cur_time;
         return sleep_time;
     }
 
@@ -57,7 +64,7 @@ public:
     {
         if (m_master_clock)
         {
-            long diff = m_clock_drift - m_master_clock->get_clock_time();
+            long diff = m_master_clock->get_clock()-get_clock();
             double threshold = std::max(40.0, std::min(100.0, delay));
             if (diff < -threshold)
             {
@@ -75,8 +82,8 @@ public:
         return delay;
     }
 private:
-    double m_clock_drift;
-    double m_clock_real_time;
+    double m_seek_time;
+    double m_clock_start_time;
     long m_pts;
     AVRational m_time_base;
     std::shared_ptr<Clock> m_master_clock; // 主时钟

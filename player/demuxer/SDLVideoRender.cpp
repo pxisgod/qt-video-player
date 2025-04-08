@@ -4,6 +4,8 @@
 thread_local std::shared_ptr<AVFrame> SDLVideoRender::m_pending_frame;
 thread_local double SDLVideoRender::m_sleep_time;
 thread_local long SDLVideoRender::m_frame_pts;
+
+
 int SDLVideoRender::init()
 {
     int window_width = m_widget->width();
@@ -175,3 +177,13 @@ void SDLVideoRender::deal_neg_wait_time()
         m_clock->set_clock(m_frame_pts); // 设置时钟
     }
 }
+
+ void SDLVideoRender::adjust_clock(long position) {
+    m_clock->get_master_clock()->init_clock(position); //设置主时钟
+    m_clock->init_clock(position);
+ } //调整时钟
+
+ void SDLVideoRender::adjust_clock() {
+    m_clock->get_master_clock()->restart_clock(); //设置主时钟
+    m_clock->restart_clock();
+ } //调整时钟

@@ -43,14 +43,13 @@ int Demuxer::init()
     }
 }
 
-void Demuxer::seek(long position)
-{
+void Demuxer::seek(long position){
     clean_func();
     int64_t seek_target = static_cast<int64_t>(position * 1000000);//微秒
     int64_t seek_min = INT64_MIN;
     int64_t seek_max = INT64_MAX;
     int ret=avformat_seek_file(m_av_format_context.get(), -1, seek_min, seek_target, seek_max, 0);
-    m_clock->set_clock_time(position*1000); //设置主时钟
+    ThreadChain::seek(position);
 }
 
 int Demuxer::work_func()

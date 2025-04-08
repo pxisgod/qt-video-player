@@ -19,6 +19,8 @@ public:
     virtual long get_wait_time();
     virtual void deal_after_wait();
     virtual void deal_neg_wait_time();
+    virtual void adjust_clock(long position) ; //调整时钟
+    virtual void adjust_clock() ; //调整时钟
     const SDL_PixelFormatEnum DST_PIX_FORMAT=SDL_PIXELFORMAT_IYUV;
 private:
     QWidget *m_widget;

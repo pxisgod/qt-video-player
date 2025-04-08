@@ -29,8 +29,8 @@ void VRender::deal_neg_wait_time(){
  }
 
  void VRender::seek(long position){
-    clean_func();
-    m_clock->set_clock_time(position*1000); //设置视频时钟
+   clean_func();
+   ThreadChain::seek(position);
  }
 
  void VRender::clean_func(){

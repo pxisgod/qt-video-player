@@ -12,7 +12,7 @@ VideoPlayerWidget::VideoPlayerWidget(QWidget *parent)
       m_video_player(new VideoPlayer(this)),
       m_widget(new QMainWindow(this)),
       m_progress_slider(new ProgressWidget(this)),
-      m_play_button(new QPushButton("Play", this)),
+      m_play_button(new QPushButton( this)),
       m_play_list(new QListWidget(this)) {
     
     m_play_button->setIcon(QIcon(":/images/stop.png"));//初始设置为停止图标
