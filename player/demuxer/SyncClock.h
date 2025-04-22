@@ -62,7 +62,7 @@ public:
         }
     }
     
-    long get_target_delay(long pts,long system_time)
+    virtual long get_target_delay(long pts,long system_time)
     {
         std::lock_guard<std::recursive_mutex> lock(m_clock_mutex);
         long delay = (((pts-m_pts) * av_q2d(m_time_base)) * 1000);
@@ -81,7 +81,7 @@ public:
         return m_time_base;
     }
    
-private:
+protected:
     std::recursive_mutex m_clock_mutex;
     long m_pts;
     AVRational m_time_base;

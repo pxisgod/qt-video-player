@@ -2,13 +2,12 @@
 #define SDL_AUDIO_RENDER_H
 #include "ARender.h"
 #include <SDL2/SDL.h>
-#include "SDLRender.h"
 enum Command
 {
     CMD_PLAY,
     CMD_PAUSE
 };
-class SDLAudioRender : public ARender, public SDL_Render
+class SDLAudioRender : public ARender
 {
 public:
     SDLAudioRender()

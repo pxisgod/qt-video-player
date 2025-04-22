@@ -2,8 +2,8 @@
 #define SDL_VIDEO_RENDER_H
 #include "VRender.h"
 #include <QWidget>
-#include <SDLRender.h>
-class SDLVideoRender:public VRender,public SDL_Render{
+#include <SDL2/SDL.h>
+class SDLVideoRender:public VRender{
 public:
     explicit SDLVideoRender(QWidget *widget):m_widget(widget){
         

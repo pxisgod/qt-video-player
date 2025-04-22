@@ -96,6 +96,7 @@ void VideoPlayerWidget::setupUI() {
     QVBoxLayout *leftLayout = new QVBoxLayout();
 
     // Video display
+    m_widget->resize(1028, 960); // 设置初始大小
     m_video_player->setVideoOutput(m_widget);
     leftLayout->addWidget(m_widget);
 

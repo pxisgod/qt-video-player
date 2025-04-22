@@ -24,7 +24,7 @@ extern "C"
 #define MAX_PACKET_RESERVE_SIZE 128
 #define MAX_FRAME_RESERVE_SIZE 128
 #define MAX_AUDIO_QUEUE_SIZE 2048000
-#define MAX_AUDIO_RESERVE_SIZE 20480
+#define MAX_AUDIO_RESERVE_SIZE 204800
 
 typedef struct PakcetQueue
 {
@@ -121,12 +121,12 @@ typedef struct FrameQueue
     bool is_full()
     {
         return (w_index < b_index && w_index + reserve_size + 1 >= b_index) ||
-               (w_index > b_index && (w_index + reserve_size + 1 - MAX_PACKET_QUEUE_SIZE >= b_index));
+               (w_index > b_index && (w_index + reserve_size + 1 - MAX_FRAME_QUEUE_SIZE >= b_index));
     };
     void append_frame(std::shared_ptr<AVFrame> frame)
     {
         frame_queue[w_index] = frame;
-        w_index = (w_index + 1) % MAX_PACKET_QUEUE_SIZE;
+        w_index = (w_index + 1) % MAX_FRAME_QUEUE_SIZE;
     };
     std::shared_ptr<AVFrame> read_frame()
     {
@@ -135,22 +135,22 @@ typedef struct FrameQueue
     void remove_frame_1() // b_index+1
     {
         int index = b_index;
-        b_index = (b_index + 1) % MAX_PACKET_QUEUE_SIZE;
+        b_index = (b_index + 1) % MAX_FRAME_QUEUE_SIZE;
         frame_queue[index].reset();
     };
     void remove_frame_2() // r_index+1
     {
         int index = r_index;
-        r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
+        r_index = (r_index + 1) % MAX_FRAME_QUEUE_SIZE;
         frame_queue[index].reset();
     };
     void remove_frame_3() // r_index+1 && b_index=r_index
     {
-        r_index = (r_index + 1) % MAX_PACKET_QUEUE_SIZE;
+        r_index = (r_index + 1) % MAX_FRAME_QUEUE_SIZE;
         for (; b_index != r_index;)
         {
             frame_queue[b_index].reset();
-            b_index = (b_index + 1) % MAX_PACKET_QUEUE_SIZE;
+            b_index = (b_index + 1) % MAX_FRAME_QUEUE_SIZE;
         }
     };
     void rollback()
@@ -169,11 +169,11 @@ typedef struct FrameQueue
     };
     int readable_size()
     {
-        return (w_index - r_index + MAX_PACKET_QUEUE_SIZE) % MAX_PACKET_QUEUE_SIZE;
+        return (w_index - r_index + MAX_FRAME_QUEUE_SIZE) % MAX_FRAME_QUEUE_SIZE;
     };
     int size()
     {
-        return (w_index - b_index + MAX_PACKET_QUEUE_SIZE) % MAX_PACKET_QUEUE_SIZE;
+        return (w_index - b_index + MAX_FRAME_QUEUE_SIZE) % MAX_FRAME_QUEUE_SIZE;
     }
 } FrameQueue;
 
@@ -188,9 +188,9 @@ typedef struct AudioSampleQueue
         this->time_base = time_base;
     }
     int8_t sample_queue[MAX_AUDIO_QUEUE_SIZE];
-    uint16_t r_index = 0;
-    uint16_t w_index = 0;
-    uint16_t reserve_size=MAX_AUDIO_RESERVE_SIZE;
+    long r_index = 0;
+    long w_index = 0;
+    long reserve_size=MAX_AUDIO_RESERVE_SIZE;
     long pts_time = 0;
     int sample_rate;
     int sample_size;
@@ -202,7 +202,7 @@ typedef struct AudioSampleQueue
     void append_samples(std::shared_ptr<uint8_t> samples, int size, long pts)
     {
         std::lock_guard<std::mutex> lock(mutex);
-        this->pts_time = ((pts * av_q2d(time_base)) +size/ channel_count / sample_size/sample_rate) *1000;
+        this->pts_time = ((pts *1000 * av_q2d(time_base)) +size*1000/ channel_count / sample_size/sample_rate) ;
         for (int i = 0; i < size; i++)
         {
             sample_queue[w_index] = samples.get()[i];
@@ -242,12 +242,18 @@ typedef struct AudioSampleQueue
     long calculate_pts_time()
     {
         std::lock_guard<std::mutex> lock(mutex);
-        return pts_time - ((w_index < r_index ? w_index + MAX_AUDIO_QUEUE_SIZE - r_index : w_index - r_index) / channel_count / sample_size + nb_samples) / sample_rate * 1000;
+        return pts_time - ((w_index < r_index ? w_index + MAX_AUDIO_QUEUE_SIZE - r_index : w_index - r_index) / channel_count / sample_size + nb_samples) * 1000/ sample_rate ;
     };
 
     long get_length()
     {
         return (w_index - r_index + MAX_AUDIO_QUEUE_SIZE) % MAX_AUDIO_QUEUE_SIZE/(channel_count*sample_size);
+    };
+    void skip(long count){//跳过样本
+        r_index=(r_index+count*channel_count*sample_size+MAX_AUDIO_QUEUE_SIZE)%MAX_AUDIO_QUEUE_SIZE;
+    };
+    void rollback(long count){//回滚样本
+        r_index=(r_index-count*channel_count*sample_size+MAX_AUDIO_QUEUE_SIZE)%MAX_AUDIO_QUEUE_SIZE;
     };
 } AudioSampleQueue;
 

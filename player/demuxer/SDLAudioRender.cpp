@@ -87,31 +87,55 @@ void SDLAudioRender::audio_callback(void *userdata, Uint8 *stream, int len)
     std::lock_guard<std::mutex> lock(audio_render->m_rsc_mutex);
     long pts_time=sample_queue->calculate_pts_time();
     long delay = audio_render->get_clock()->get_target_delay(pts_time,get_system_current_time());  
-    long samples=delay * AUDIO_DST_SAMPLE_RATE / 1000; //跳过样本数
+    qDebug("音频延迟时间：%ld",delay);
     long skip_per_samples=100;
-    long length=sample_queue->get_length();//剩余样本数
-    for(int i=0;i<len/(AUDIO_DST_CHANNEL_COUNTS)/(AUDIO_SAMPLE_SIZE);i++)
+    long delay_samples=delay * AUDIO_DST_SAMPLE_RATE / 1000; //延迟样本数
+    long reserve_samples=sample_queue->get_length();//剩余样本数
+    long need_samples=len/(AUDIO_DST_CHANNEL_COUNTS)/(AUDIO_SAMPLE_SIZE);//需要样本数
+    if(delay<-100){
+        //延迟过大，跳过样本
+        long skip_length=std::min(-delay_samples,reserve_samples);
+        reserve_samples-=skip_length;
+        delay_samples+=skip_length;
+        sample_queue->skip(skip_length);//需要样本数不变
+    }else if(delay>100){
+        //延迟过小，重复样本
+        long rollback_length=std::min(delay_samples,need_samples);
+        need_samples-=rollback_length;
+        delay_samples-=rollback_length;
+        while(rollback_length>0){
+            long x=std::min(reserve_samples,rollback_length);
+            for(long i=0;i<x;i++){
+                for(int j=0;j<(AUDIO_DST_CHANNEL_COUNTS)*(AUDIO_SAMPLE_SIZE);j++){
+                    stream[i*(AUDIO_DST_CHANNEL_COUNTS)*(AUDIO_SAMPLE_SIZE)+j]=0;
+                }
+            }
+            //sample_queue->rollback(x);
+            rollback_length-=x;
+        }
+    }
+    for(int i=0;i<need_samples;i++)
     {
-        if(samples>0 && skip_per_samples<=0 && length>0){
+        if(delay_samples<0 && skip_per_samples<=0 && reserve_samples>0){
             //跳过样本
             for(int j=0;j<(AUDIO_DST_CHANNEL_COUNTS)*(AUDIO_SAMPLE_SIZE);j++){
                 sample_queue->read_sample();
             }
             i--;
-            length--;
+            reserve_samples--;
             skip_per_samples=100;
-            samples--;
-        }else if(samples<0 && skip_per_samples<=0 && length>0){
+            delay_samples++;
+        }else if(delay_samples>0 && skip_per_samples<=0 && reserve_samples>0){
             //重复样本
             for(int j=0;j<(AUDIO_DST_CHANNEL_COUNTS)*(AUDIO_SAMPLE_SIZE);j++){
                 stream[i*(AUDIO_DST_CHANNEL_COUNTS)*(AUDIO_SAMPLE_SIZE)+j]=sample_queue->read_sample();
             }
             sample_queue->rollback();
             skip_per_samples=100;
-            samples++;
+            delay_samples--;
         }else{
             skip_per_samples--;
-            if(length<=0){
+            if(reserve_samples<=0){
                 //没有样本
                 for(int j=0;j<(AUDIO_DST_CHANNEL_COUNTS)*(AUDIO_SAMPLE_SIZE);j++){
                     stream[i*(AUDIO_DST_CHANNEL_COUNTS)*(AUDIO_SAMPLE_SIZE)+j]=0;
@@ -122,11 +146,10 @@ void SDLAudioRender::audio_callback(void *userdata, Uint8 *stream, int len)
                     stream[i*(AUDIO_DST_CHANNEL_COUNTS)*(AUDIO_SAMPLE_SIZE)+j]=sample_queue->read_sample();
                 }
             }
-            length--;
+            reserve_samples--;
         }
     }
     //设置时钟
-    pts_time=sample_queue->calculate_pts_time();
     audio_render->get_clock()->set_clock(pts_time,get_system_current_time(),false);
     //通知render可能结束
     audio_render->notify();

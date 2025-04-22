@@ -9,7 +9,6 @@ public:
     {
     }
     virtual ~VideoSyncClock(){}
-
     virtual long get_real_delay(long clock_diff,long delay)
     {
         long threshold = std::max(40l, std::min(100l, delay));

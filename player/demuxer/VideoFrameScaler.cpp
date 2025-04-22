@@ -53,7 +53,6 @@ void VideoFrameScaler::do_uninit()
 
 int VideoFrameScaler::work_func()
 {
-    qDebug("VideoFrameScaler::work_func");
     std::lock_guard<std::mutex> lock(m_rsc_mutex);
     if (m_frame_queue->is_empty())
     {
@@ -107,6 +106,5 @@ void VideoFrameScaler::clean_func(){
 }
 
 bool VideoFrameScaler::pause_condition(int work_state){
-    qDebug("VideoFrameScaler::pause_condition");
     return m_frame_queue->is_empty() || m_scale_frame_queue->is_full();
 }

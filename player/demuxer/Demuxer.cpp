@@ -1,5 +1,6 @@
 #include "Track.h"
 #include "Demuxer.h"
+#include <SDL2/SDL.h>
 
 int Demuxer::init_0(std::string &&url)
 {
@@ -153,7 +154,6 @@ int Demuxer::stop_0()
 
 bool Demuxer::pause_condition(int work_state)
 {
-    qDebug("Demuxer::pause_condition");
     return m_packet_queue0->is_full() || m_packet_queue1->is_full();
 }
 
@@ -198,7 +198,6 @@ void Demuxer::do_seek(long pts_time,long system_time)
 
 int Demuxer::work_func()
 {
-    qDebug("Demuxer::work_func");
     std::lock_guard<std::mutex> lock(m_rsc_mutex); //获取资源锁
     AVPacket *packet = av_packet_alloc();
     std::shared_ptr<AVPacket> packet_ptr = std::shared_ptr<AVPacket>(
@@ -240,6 +239,7 @@ void Demuxer::clean_func()
         m_packet_queue0->clear();
         m_packet_queue1->clear();
     }
+    SDL_Quit();
     std::lock_guard<std::mutex> lock(m_play_mutex);
     if (m_play_state != STOPPED)
     {

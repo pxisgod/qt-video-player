@@ -54,7 +54,7 @@ int SDLVideoRender::thread_init()
 
 int SDLVideoRender::work_func()
 {
-    qDebug("SDLVideoRender::work_func");
+    std::lock_guard<std::mutex> lock(m_rsc_mutex);
     if (m_frame_queue->is_empty())
     {
         return 0;
@@ -107,7 +107,6 @@ void SDLVideoRender::resize_window()
 
 bool SDLVideoRender::pause_condition(int work_state)
 {
-    qDebug("SDLVideoRender::pause_condition");
     std::lock_guard<std::mutex> lock(m_rsc_mutex);
     if (m_frame_queue->is_empty()||work_state==IS_PAUSED)
     {

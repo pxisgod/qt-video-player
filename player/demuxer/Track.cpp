@@ -23,7 +23,6 @@ Track::Track(uint32_t stream_id,std::shared_ptr<Demuxer> demuxer,AVMediaType med
 }
 bool Track::pause_condition(int work_state)
 {
-    qDebug("Track::pause_condition");
     return m_packet_queue->is_empty() || m_frame_queue->is_full();
 }
 
@@ -39,7 +38,7 @@ int Track::do_init(long system_time)
     m_clock->set_clock(0, system_time); 
 
     // 5.获取解码器参数
-    AVCodecParameters *m_codecpar = m_demuxer->get_av_format_context()->streams[m_stream_id]->codecpar;
+    m_codecpar = m_demuxer->get_av_format_context()->streams[m_stream_id]->codecpar;
 
     // 6.获取解码器
     AVCodec *avCodec = const_cast<AVCodec *>(avcodec_find_decoder(m_codecpar->codec_id));
@@ -127,7 +126,6 @@ void Track::do_seek(long pts_time,long system_time)
 
 int Track::work_func()
 {
-    qDebug("Track::work_func");
     std::lock_guard<std::mutex> lock(m_rsc_mutex);
     if(m_packet_queue->is_empty())
     {
