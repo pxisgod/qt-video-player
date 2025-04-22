@@ -21,10 +21,9 @@ void VideoFrameScaler::init_sws_context(int screen_width, int screen_height)
     m_frame_queue->rollback();    // 原始帧读指针回滚
 }
 
-int VideoFrameScaler::init()
+int VideoFrameScaler::do_init(long system_time)
 {
-    Scaler::init();
-    // qDebug()<<"VideoDecoder::OnDecoderReady";
+    m_scale_frame_queue = std::make_shared<FrameQueue>();//创建scale后的frame_queue
     m_video_width = m_track->get_av_codec_context()->width;
     m_video_height = m_track->get_av_codec_context()->height;
     m_src_pix_format = m_track->get_av_codec_context()->pix_fmt;
@@ -35,7 +34,7 @@ int VideoFrameScaler::init()
         m_thread_video_render->set_video_frame_scaler(scaler);
         m_video_render = m_thread_video_render;
         add_thread(m_thread_video_render);
-        return m_thread_video_render->init();
+        return m_thread_video_render->init(system_time);
     }
     else
     {
@@ -43,14 +42,18 @@ int VideoFrameScaler::init()
     }
 }
 
-void VideoFrameScaler::uninit()
+void VideoFrameScaler::do_seek(long pts_time,long system_time){
+    m_scale_frame_queue->clear();
+}
+
+void VideoFrameScaler::do_uninit()
 {
     m_thread_video_render = nullptr; // 释放强指针
-    ThreadChain::uninit();
 }
 
 int VideoFrameScaler::work_func()
 {
+    std::lock_guard<std::mutex> lock(m_rsc_mutex);
     if (m_frame_queue->is_empty())
     {
         return 0;
@@ -95,4 +98,13 @@ int VideoFrameScaler::work_func()
     m_frame_queue->remove_frame_2();
     m_track->notify(); // 通知track
     return 0;
+}
+
+void VideoFrameScaler::clean_func(){
+    std::lock_guard<std::mutex> lock(m_rsc_mutex);
+    m_scale_frame_queue->clear();
+}
+
+bool VideoFrameScaler::pause_condition(int work_state){
+    return m_frame_queue->is_empty() || m_scale_frame_queue->is_full();
 }

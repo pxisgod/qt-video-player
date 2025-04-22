@@ -6,7 +6,7 @@ thread_local double SDLVideoRender::m_sleep_time;
 thread_local long SDLVideoRender::m_frame_pts;
 
 
-int SDLVideoRender::init()
+int SDLVideoRender::do_init(long system_time)
 {
     int window_width = m_widget->width();
     int window_height = m_widget->height();
@@ -27,7 +27,7 @@ int SDLVideoRender::init()
     m_rect.y = 0;
     m_rect.w = m_screen_width;
     m_rect.h = m_screen_height;
-    return VRender::init();
+    return VRender::init(system_time);
 }
 
 int SDLVideoRender::thread_init()
@@ -67,7 +67,7 @@ int SDLVideoRender::work_func()
         if (result >= 0)
         {
             SDL_RenderPresent(m_renderer.get());
-            m_clock->set_clock(m_frame_pts); // 设置时钟
+            m_clock->set_clock_by_pts(m_frame_pts,get_system_current_time()); // 设置时钟
         }
         else
         {
@@ -104,7 +104,7 @@ void SDLVideoRender::resize_window()
     m_frame_scaler->init_sws_context(m_screen_width, m_screen_height);
 }
 
-bool SDLVideoRender::pause_condition()
+bool SDLVideoRender::pause_condition(int work_state)
 {
     std::lock_guard<std::mutex> lock(m_rsc_mutex);
     if (m_frame_queue->is_empty())
@@ -126,39 +126,24 @@ bool SDLVideoRender::pause_condition()
     {
         pts = 0;
     }
-    double sleep_time = m_clock->get_sleep_time(pts);
+    double delay = m_clock->get_target_delay(pts,get_system_current_time());
     // 设置线程变量
     m_pending_frame = frame;
-    m_sleep_time = sleep_time;
+    m_sleep_time = delay;
     m_frame_pts = pts;
 
-    if (sleep_time != 0)
+    if (m_sleep_time != 0)
     {
         return true;
     }
     else
     {
-        return false;
+        return work_state==IS_PAUSED;
     }
 }
 long SDLVideoRender::get_wait_time()
 {
-    /* 测试用
-    if(m_sleep_time != 0)
-    {
-        return 10;
-    }
-    else
-    {
-        return 0;
-    }*/
-    
     return m_sleep_time;
-}
-
-void SDLVideoRender::deal_after_wait(){
-
-   // m_clock->set_clock_time();
 }
 
 void SDLVideoRender::deal_neg_wait_time()
@@ -174,16 +159,6 @@ void SDLVideoRender::deal_neg_wait_time()
         m_frame_queue->remove_frame_3();
         m_frame_scaler->notify();
         m_frame_scaler->render_finish();
-        m_clock->set_clock(m_frame_pts); // 设置时钟
+        m_clock->set_clock_by_pts(m_frame_pts,get_system_current_time()); // 设置时钟
     }
 }
-
- void SDLVideoRender::adjust_clock(long position) {
-    m_clock->get_master_clock()->init_clock(position); //设置主时钟
-    m_clock->init_clock(position);
- } //调整时钟
-
- void SDLVideoRender::adjust_clock() {
-    m_clock->get_master_clock()->restart_clock(); //设置主时钟
-    m_clock->restart_clock();
- } //调整时钟

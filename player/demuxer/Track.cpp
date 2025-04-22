@@ -2,15 +2,26 @@
 #include "Demuxer.h"
 #include "AudioFrameScaler.h"
 #include "VideoFrameScaler.h"
+#include "AudioSyncClock.h"
+#include "VideoSyncClock.h"
 
 Track::Track(uint32_t stream_id,std::shared_ptr<Demuxer> demuxer,AVMediaType media_type,std::shared_ptr<PacketQueue> packet_queue){
     m_stream_id=stream_id;
     m_demuxer=demuxer;
     m_media_type=media_type;
     m_packet_queue=packet_queue;
-    m_clock=std::make_shared<SyncClock>(demuxer->get_av_format_context()->streams[stream_id]->time_base);
+    switch (media_type)
+    {
+        case AVMEDIA_TYPE_AUDIO:
+            m_clock=std::static_pointer_cast<SyncClock>(std::make_shared<AudioSyncClock>(demuxer->get_av_format_context()->streams[stream_id]->time_base));
+            break;
+        case AVMEDIA_TYPE_VIDEO:
+            m_clock=std::static_pointer_cast<SyncClock>(std::make_shared<VideoSyncClock>(demuxer->get_av_format_context()->streams[stream_id]->time_base));
+            break;
+    }
+    m_clock->set_master_clock(demuxer->get_clock());
 }
-bool Track::pause_condition()
+bool Track::pause_condition(int work_state)
 {
     return m_packet_queue->is_empty() || m_frame_queue->is_full();
 }
@@ -21,21 +32,16 @@ bool Track::stop_condition()
 }
 
 
-long Track::get_wait_time(){
-    return 0;
-}
-void Track::deal_neg_wait_time(){
-}
-
-
-int Track::init()
+int Track::do_init(long system_time)
 {
-    ThreadChain::init(); //设置消息链
+    // 设置时钟
+    m_clock->set_clock(0, system_time); 
+
     // 5.获取解码器参数
-    AVCodecParameters *codecParameters = m_demuxer->get_av_format_context()->streams[m_stream_id]->codecpar;
+    AVCodecParameters *m_codecpar = m_demuxer->get_av_format_context()->streams[m_stream_id]->codecpar;
 
     // 6.获取解码器
-    AVCodec *avCodec = const_cast<AVCodec *>(avcodec_find_decoder(codecParameters->codec_id));
+    AVCodec *avCodec = const_cast<AVCodec *>(avcodec_find_decoder(m_codecpar->codec_id));
     if (avCodec == nullptr)
     {
         qDebug("DecoderBase::InitFFDecoder avcodec_find_decoder fail.");
@@ -50,7 +56,7 @@ int Track::init()
           avcodec_close(ptr);
           avcodec_free_context(&ptr); });
 
-    if (avcodec_parameters_to_context(avCodecContext, codecParameters) != 0)
+    if (avcodec_parameters_to_context(avCodecContext, m_codecpar) != 0)
     {
         qDebug("DecoderBase::InitFFDecoder avcodec_parameters_to_context fail.");
         return -1;
@@ -70,10 +76,10 @@ int Track::init()
         return -1;
     }
     m_frame_queue = std::make_shared<FrameQueue>();
-    return create_scaler();
+    return create_scaler(system_time);
 }
 
-int Track::create_scaler()
+int Track::create_scaler(long system_time)
 {
     std::shared_ptr<Scaler> scaler;
     std::shared_ptr<Track> track=std::static_pointer_cast<Track>(shared_from_this());
@@ -82,7 +88,7 @@ int Track::create_scaler()
     case AVMEDIA_TYPE_AUDIO:
         scaler = std::make_shared<AudioFrameScaler>(m_frame_queue, track);
         add_thread(scaler);
-        if (scaler->init() != 0) // 初始化失败
+        if (scaler->init(system_time) != 0) // 初始化失败
         {
             return -1;
         }
@@ -94,7 +100,7 @@ int Track::create_scaler()
     case AVMEDIA_TYPE_VIDEO:
         scaler = std::make_shared<VideoFrameScaler>(m_frame_queue, track);
         add_thread(scaler);
-        if (scaler->init() != 0) // 初始化失败
+        if (scaler->init(system_time) != 0) // 初始化失败
         {
             return -1;
         }
@@ -109,13 +115,16 @@ int Track::create_scaler()
     }
     return 0;
 }
-void Track::seek(long position)
+
+void Track::do_seek(long pts_time,long system_time)
 {
-    clean_func();
-    ThreadChain::seek(position);
+    m_frame_queue->clear();
+    avcodec_flush_buffers(m_av_codec_context.get());
 }
+
 int Track::work_func()
 {
+    std::lock_guard<std::mutex> lock(m_rsc_mutex);
     if(m_packet_queue->is_empty())
     {
         return 0;
@@ -162,6 +171,7 @@ int Track::work_func()
 }
 void Track::clean_func()
 {
+    std::lock_guard<std::mutex> lock(m_rsc_mutex);
     m_frame_queue->clear();
     avcodec_flush_buffers(m_av_codec_context.get());
 }

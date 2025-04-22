@@ -12,15 +12,13 @@ public:
     void append_frame(std::shared_ptr<AVFrame> frame);
     void set_video_frame_scaler(std::shared_ptr<VideoFrameScaler> frame_scaler);
     virtual void resize_window(){};
-    virtual bool pause_condition();
+    virtual bool pause_condition(int work_state);
     virtual bool stop_condition();
-    virtual long get_wait_time();
-    virtual void deal_neg_wait_time();
-    virtual int init();
-    virtual void seek(long position);
-    virtual void clean_func();
-    virtual void notify_debug(){
-        std::cout<< "VRender::notify_debug" << std::endl;
+    virtual int do_init(long system_time);
+    virtual void do_seek(long pts_time,long system_time);
+    virtual void do_play(long system_time);
+    std::shared_ptr<SyncClock> get_clock(){
+        return m_clock;
     }
 protected:
     std::shared_ptr<VideoFrameScaler> m_frame_scaler;

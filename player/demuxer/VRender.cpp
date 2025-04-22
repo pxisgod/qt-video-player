@@ -11,28 +11,22 @@ void VRender::set_video_frame_scaler(std::shared_ptr<VideoFrameScaler> frame_sca
    m_clock=frame_scaler->get_clock();
 }
 
- bool VRender::pause_condition(){
+ bool VRender::pause_condition(int work_state){
     return m_frame_queue->is_empty();
  }
  bool VRender::stop_condition(){
     return m_frame_queue->is_empty();
  }
-long VRender::get_wait_time(){
-   return 0;
-}
-void VRender::deal_neg_wait_time(){
-}
- int VRender::init(){
-   ThreadChain::init(); //设置消息链
+
+ int VRender::do_init(long system_time){
     m_frame_scaler->init_sws_context(m_screen_width,m_screen_height);
     return 0;
  }
 
- void VRender::seek(long position){
-   clean_func();
-   ThreadChain::seek(position);
+ void VRender::do_seek(long pts_time,long system_time){
+   m_clock->set_clock(pts_time,system_time,true);
  }
 
- void VRender::clean_func(){
-    m_frame_queue->clear();
+ void VRender::do_play(long system_time){
+   m_clock->resync_clock(system_time);
  }

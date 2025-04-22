@@ -22,6 +22,9 @@ public:
     static std::shared_ptr<VRender> get_thread_render(){
         return m_thread_video_render;
     }
+    std::shared_ptr<FrameQueue> get_scale_frame_queue(){
+        return m_scale_frame_queue;
+    }
     
     int get_video_width(){
         return m_video_width;
@@ -31,9 +34,12 @@ public:
     }
     void init_sws_context(int screen_width,int screen_height);
 protected:
-    virtual int init();
-    virtual void uninit();
+    virtual int do_init(long system_time);
+    virtual void do_seek(long pts_time,long system_time);
+    virtual void do_uninit();
     virtual int work_func();
+    virtual void clean_func();
+    virtual bool pause_condition(int work_state);
 private:
     static thread_local std::shared_ptr<VRender>  m_thread_video_render;
     std::weak_ptr<VRender>  m_video_render;
@@ -43,6 +49,7 @@ private:
     int m_screen_width;
     int m_screen_height;
     std::shared_ptr<SwsContext> m_sws_context;
+    std::shared_ptr<FrameQueue> m_scale_frame_queue;
 };
 
 #endif

@@ -20,37 +20,18 @@ public:
 
     virtual ~Scaler(){
     }
-    void append_frame(std::shared_ptr<AVFrame> frame);
-
     std::shared_ptr<FrameQueue> get_frame_queue(){
         return m_frame_queue;
-    }
-
-    std::shared_ptr<FrameQueue> get_scale_frame_queue(){
-        return m_scale_frame_queue;
     }
     std::shared_ptr<SyncClock> get_clock(){
         return m_clock;
     }
+    void append_frame(std::shared_ptr<AVFrame> frame);
     void render_finish();//渲染成功一帧，b_index指针往前移动一个
-    virtual void notify_debug(){
-        std::cout<< "Scaler::notify_debug" << std::endl;
-    }
-
-
 protected:
-    virtual bool pause_condition();
     virtual bool stop_condition();
-    virtual long get_wait_time();
-    virtual void deal_neg_wait_time();
-    virtual int init();
-    virtual void seek(long position);
-    virtual void clean_func();
-
-protected:
     std::shared_ptr<Track> m_track; 
     std::shared_ptr<FrameQueue> m_frame_queue;
-    std::shared_ptr<FrameQueue> m_scale_frame_queue;
     std::shared_ptr<SyncClock> m_clock;
 };
 

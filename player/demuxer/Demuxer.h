@@ -6,8 +6,14 @@
 #include "SystemClock.h"
 #include <iostream>
 
+enum PlayState
+{
+    INITED,
+    PLAYING,
+    PAUSE,
+    STOPPED
+};
 class Track;
-
 class Demuxer : public ThreadChain
 {
 public:
@@ -15,54 +21,54 @@ public:
     explicit Demuxer(std::string &&url) : m_url(std::move(url))
     {
         m_clock = std::make_shared<SystemClock>();
+        m_play_state = STOPPED; // 初始播放状态为STOPPED
     }
     Demuxer()
     {
         m_clock = std::make_shared<SystemClock>();
+        m_play_state = STOPPED; // 初始播放状态为STOPPED
     }
+    virtual ~Demuxer() {};
     void set_url(std::string &&url)
     {
         m_url = std::move(url);
     }
-    virtual ~Demuxer() {};
-    int init_0(std::string &&url)
+    std::string get_url()
     {
-
-        std::lock_guard<std::mutex> lock(m_play_mutex);
-        if (m_play_state == STOPPED)
-        {
-            m_play_state = INITED;
-            m_url = std::move(url);
-            if (init() != 0)
-            {
-                uninit_0(); // 全部去除初始化
-                return -1;
-            }
-            return 0;
-        }
-
-        return -1;
+        return m_url;
+    }
+    std::shared_ptr<SystemClock> get_clock(){
+        return m_clock;
     }
 
-    virtual bool pause_condition();
-    virtual bool stop_condition();
-    virtual long get_wait_time();
-    virtual void deal_after_wait();
-    virtual void deal_neg_wait_time();
-    virtual int init();
-    virtual void seek(long position);
+    int get_play_state(){
+        return m_play_state;
+    }
+
+    int init_0(std::string &&url);
+    void start_0();
+    int seek_0(long pts_time);
+    int play_0();
+    int pause_0();
+    void uninit_0();
+    int stop_0();
+    
+    virtual bool pause_condition(int work_state);
+    virtual int do_init(long system_time);
+    virtual void do_seek(long pts_time,long system_time);
     virtual int work_func();
     virtual void clean_func();
-    int create_track_list();
 
+public:
     std::shared_ptr<AVFormatContext> get_av_format_context()
     {
         return m_av_format_context;
     }
-    virtual void notify_debug()
-    {
-        std::cout << "Demuxer::notify_debug" << std::endl;
-    }
+
+private:
+    static void seek_0_l(std::list<ThreadChain::S_Ptr> & leaf_list,std::list<ThreadChain::S_Ptr> & list_copy, long pts_time);
+    static void seek_1_l(std::list<ThreadChain::S_Ptr> & list_copy, long pts_time,long system_time);
+    int create_track_list(long system_time);
 
 private:
     std::string m_url;
@@ -73,6 +79,8 @@ private:
     std::shared_ptr<PacketQueue> m_packet_queue0; // 音频队列
     std::shared_ptr<PacketQueue> m_packet_queue1; // 视频队列
     std::shared_ptr<SystemClock> m_clock;
+    std::mutex m_play_mutex;            // 播放锁
+    int m_play_state;                   // 播放状态
 };
 
 #endif // DEMUXER_H

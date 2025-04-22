@@ -8,7 +8,6 @@ public:
     SyncClock(AVRational m_time_base)
     {
         this->m_time_base = m_time_base;
-        init_clock(0);
     }
     virtual ~SyncClock(){}
     void set_master_clock(std::shared_ptr<Clock> master_clock)
@@ -19,71 +18,69 @@ public:
         return m_master_clock;
     }
 
-    double get_clock()
+    void set_clock_by_pts(long pts,long system_time)
     {
-        return m_clock_start_time;
-    }
-
-    void init_clock(double seek_time)
-    {
-        long cur_time = get_system_current_time();
-        m_clock_start_time=cur_time-seek_time;
-        m_seek_time=seek_time; //记录seek时间
-        m_pts=seek_time/av_q2d(m_time_base)/1000; //计算pts
-    }
-
-    void set_clock(long pts)
-    {
-        long cur_time = get_system_current_time();
         m_pts = pts;
-        m_seek_time = ((pts * av_q2d(m_time_base)) * 1000);
-        m_clock_start_time = cur_time-m_seek_time;
-        if(m_master_clock){
-            m_master_clock->set_clock(pts);
+        long pts_time = ((pts * av_q2d(m_time_base)) * 1000);
+        set_clock(pts_time, system_time,false);
+    }
+
+    long get_clock(long system_time)
+    {
+        std::lock_guard<std::mutex> lock(m_clock_mutex);
+        return m_pts_drift + system_time;
+    }
+
+    void set_clock(long pts_time,long system_time,bool sync=true)
+    {
+        std::lock_guard<std::mutex> lock(m_clock_mutex);
+        m_pts = pts_time/av_q2d(m_time_base)/1000;
+        m_pts_drift = pts_time - system_time; // 记录pts时间和系统时间的差值
+        m_last_update_time = system_time; // 记录上次更新时间
+        if (m_master_clock)
+        {
+            if(!sync)
+            {
+                m_master_clock->sync_clock( system_time); // 设置主时钟
+            }
+            else
+            {
+                m_master_clock->set_clock(pts_time, system_time,true); // 设置主时钟
+            }
+        }
+    }
+
+    void sync_clock(long system_time){} //主时钟同步
+    
+    void resync_clock(long system_time){ //主时钟重新同步
+        std::lock_guard<std::mutex> lock(m_clock_mutex);
+        if (m_master_clock)
+        {
+            m_master_clock->resync_clock(system_time); // 重新同步主时钟
         }
     }
     
-    virtual void restart_clock(){
-        long cur_time = get_system_current_time();
-        m_clock_start_time=cur_time-m_seek_time; // 修改起始时间
-    }
-
-    double get_sleep_time(long pts)
+    long get_target_delay(long pts,long system_time)
     {
-        double delay = (((pts - m_pts) * av_q2d(m_time_base)) * 1000);
-        double compute_delay=get_target_delay(delay);
-        if(compute_delay<=0){
-            return -1;
-        }
-        double cur_time = get_system_current_time();
-        double sleep_time = m_clock_start_time +m_seek_time + compute_delay - cur_time;
-        return sleep_time;
-    }
-
-    double get_target_delay(double delay)
-    {
+        std::lock_guard<std::mutex> lock(m_clock_mutex);
+        long delay = (((pts-m_pts) * av_q2d(m_time_base)) * 1000);
         if (m_master_clock)
         {
-            long diff = m_master_clock->get_clock()-get_clock();
-            double threshold = std::max(40.0, std::min(100.0, delay));
-            if (diff < -threshold)
-            {
-                return 0;
-            }
-            else if (diff >= threshold && delay > 100.0)
-            {
-                return diff + delay;
-            }
-            else if (diff >= threshold)
-            {
-                return delay * 2;
-            }
+            long clock_diff = get_clock(system_time)-m_master_clock->get_clock(system_time);
+            return get_real_delay(clock_diff,delay);
         }
         return delay;
     }
+
+    virtual long get_real_delay(long clock_diff,long delay)=0;
+
+    AVRational get_time_base()
+    {
+        return m_time_base;
+    }
+   
 private:
-    double m_seek_time;
-    double m_clock_start_time;
+    std::mutex m_clock_mutex;
     long m_pts;
     AVRational m_time_base;
     std::shared_ptr<Clock> m_master_clock; // 主时钟

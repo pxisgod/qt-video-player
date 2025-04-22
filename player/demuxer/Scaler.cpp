@@ -13,26 +13,6 @@ void Scaler::render_finish(){
     m_frame_queue->remove_frame_1();
     m_track->notify();
 }
-bool Scaler::pause_condition(){
-    return m_frame_queue->is_empty() ||m_scale_frame_queue->is_full();
-}
 bool Scaler::stop_condition(){
     return m_frame_queue->is_empty();
-}
-long Scaler::get_wait_time(){
-    return 0;
-}
-void Scaler::deal_neg_wait_time(){
-}
-int Scaler::init(){
-    m_scale_frame_queue = std::make_shared<FrameQueue>();//创建scale后的frame_queue
-    ThreadChain::init(); //设置消息链
-    return 0;
-}
-void Scaler::seek(long position){
-    clean_func();
-    ThreadChain::seek(position);
-}
-void Scaler::clean_func(){
-    m_scale_frame_queue->clear();
 }

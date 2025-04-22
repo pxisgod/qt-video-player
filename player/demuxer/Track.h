@@ -27,21 +27,24 @@ public:
     std::shared_ptr<SyncClock> get_clock(){
         return m_clock;
     }
+    uint32_t get_stream_id(){
+        return m_stream_id;
+    }
+
+    AVCodecParameters* get_codecpar(){
+        return m_codecpar;
+    }
 protected:
-    virtual bool pause_condition();
+    virtual bool pause_condition(int work_state);
     virtual bool stop_condition();
-    virtual long get_wait_time();
-    virtual void deal_neg_wait_time();
-    virtual int init();
-    virtual void seek(long position);
+    virtual int do_init(long system_time);
+    virtual void do_seek(long pts_time,long system_time);
     virtual int work_func();
     virtual void clean_func();
-    virtual void notify_debug(){
-        std::cout<< "Track::notify_debug" << std::endl;
-    }
+
 private:
     void append_packet(std::shared_ptr<AVPacket> packet);
-    int create_scaler();
+    int create_scaler(long system_time);
 
 
 private:
@@ -53,7 +56,7 @@ private:
     std::shared_ptr<FrameQueue> m_frame_queue;
     std::shared_ptr<AVCodecContext> m_av_codec_context;
     std::shared_ptr<SyncClock> m_clock;
-
+    AVCodecParameters * m_codecpar;
 };
 
 #endif 
