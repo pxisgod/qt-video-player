@@ -27,7 +27,7 @@ int SDLVideoRender::do_init(long system_time)
     m_rect.y = 0;
     m_rect.w = m_screen_width;
     m_rect.h = m_screen_height;
-    return VRender::init(system_time);
+    return VRender::do_init(system_time);
 }
 
 int SDLVideoRender::thread_init()
@@ -54,6 +54,7 @@ int SDLVideoRender::thread_init()
 
 int SDLVideoRender::work_func()
 {
+    qDebug("SDLVideoRender::work_func");
     if (m_frame_queue->is_empty())
     {
         return 0;
@@ -106,8 +107,9 @@ void SDLVideoRender::resize_window()
 
 bool SDLVideoRender::pause_condition(int work_state)
 {
+    qDebug("SDLVideoRender::pause_condition");
     std::lock_guard<std::mutex> lock(m_rsc_mutex);
-    if (m_frame_queue->is_empty())
+    if (m_frame_queue->is_empty()||work_state==IS_PAUSED)
     {
         m_sleep_time = 0;
         return true;
@@ -126,20 +128,12 @@ bool SDLVideoRender::pause_condition(int work_state)
     {
         pts = 0;
     }
-    double delay = m_clock->get_target_delay(pts,get_system_current_time());
+    long delay = m_clock->get_target_delay(pts,get_system_current_time());
     // 设置线程变量
     m_pending_frame = frame;
-    m_sleep_time = delay;
+    m_sleep_time = (delay==0?-1:delay);
     m_frame_pts = pts;
-
-    if (m_sleep_time != 0)
-    {
-        return true;
-    }
-    else
-    {
-        return work_state==IS_PAUSED;
-    }
+    return true;
 }
 long SDLVideoRender::get_wait_time()
 {

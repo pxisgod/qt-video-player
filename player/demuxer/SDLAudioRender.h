@@ -8,20 +8,26 @@ enum Command
     CMD_PLAY,
     CMD_PAUSE
 };
-class SDLAudioRender : public ARender,public SDL_Render
+class SDLAudioRender : public ARender, public SDL_Render
 {
 public:
+    SDLAudioRender()
+    {
+    }
+    virtual ~SDLAudioRender()
+    {
+    }
     virtual int thread_init();
     virtual int work_func();
     virtual void clean_func();
     virtual void do_play(long system_time);
     virtual void do_pause();
     virtual bool pause_condition(int work_state);
-    static void audio_callback (void *userdata, Uint8 * stream, int len);
+    static void audio_callback(void *userdata, Uint8 *stream, int len);
 
 private:
     SDL_AudioSpec m_audio_spec;
-    SDL_AudioDeviceID m_device_id=-1;
+    SDL_AudioDeviceID m_device_id = -1;
     std::list<Command> m_command_list;
     std::mutex m_command_mutex;
 };

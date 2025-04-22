@@ -23,6 +23,7 @@ Track::Track(uint32_t stream_id,std::shared_ptr<Demuxer> demuxer,AVMediaType med
 }
 bool Track::pause_condition(int work_state)
 {
+    qDebug("Track::pause_condition");
     return m_packet_queue->is_empty() || m_frame_queue->is_full();
 }
 
@@ -85,6 +86,7 @@ int Track::create_scaler(long system_time)
     std::shared_ptr<Track> track=std::static_pointer_cast<Track>(shared_from_this());
     switch (m_media_type)
     {
+        
     case AVMEDIA_TYPE_AUDIO:
         scaler = std::make_shared<AudioFrameScaler>(m_frame_queue, track);
         add_thread(scaler);
@@ -97,6 +99,7 @@ int Track::create_scaler(long system_time)
             m_scaler = scaler;
         }
         break;
+        
     case AVMEDIA_TYPE_VIDEO:
         scaler = std::make_shared<VideoFrameScaler>(m_frame_queue, track);
         add_thread(scaler);
@@ -124,6 +127,7 @@ void Track::do_seek(long pts_time,long system_time)
 
 int Track::work_func()
 {
+    qDebug("Track::work_func");
     std::lock_guard<std::mutex> lock(m_rsc_mutex);
     if(m_packet_queue->is_empty())
     {

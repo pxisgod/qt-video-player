@@ -27,13 +27,13 @@ public:
 
     long get_clock(long system_time)
     {
-        std::lock_guard<std::mutex> lock(m_clock_mutex);
+        std::lock_guard<std::recursive_mutex> lock(m_clock_mutex);
         return m_pts_drift + system_time;
     }
 
     void set_clock(long pts_time,long system_time,bool sync=true)
     {
-        std::lock_guard<std::mutex> lock(m_clock_mutex);
+        std::lock_guard<std::recursive_mutex> lock(m_clock_mutex);
         m_pts = pts_time/av_q2d(m_time_base)/1000;
         m_pts_drift = pts_time - system_time; // 记录pts时间和系统时间的差值
         m_last_update_time = system_time; // 记录上次更新时间
@@ -53,7 +53,9 @@ public:
     void sync_clock(long system_time){} //主时钟同步
     
     void resync_clock(long system_time){ //主时钟重新同步
-        std::lock_guard<std::mutex> lock(m_clock_mutex);
+        std::lock_guard<std::recursive_mutex> lock(m_clock_mutex);
+        m_pts_drift = m_pts_drift + m_last_update_time - system_time ; // 更新pts时间和系统时间的差值
+        m_last_update_time = system_time; // 更新上次更新时间
         if (m_master_clock)
         {
             m_master_clock->resync_clock(system_time); // 重新同步主时钟
@@ -62,7 +64,7 @@ public:
     
     long get_target_delay(long pts,long system_time)
     {
-        std::lock_guard<std::mutex> lock(m_clock_mutex);
+        std::lock_guard<std::recursive_mutex> lock(m_clock_mutex);
         long delay = (((pts-m_pts) * av_q2d(m_time_base)) * 1000);
         if (m_master_clock)
         {
@@ -80,7 +82,7 @@ public:
     }
    
 private:
-    std::mutex m_clock_mutex;
+    std::recursive_mutex m_clock_mutex;
     long m_pts;
     AVRational m_time_base;
     std::shared_ptr<Clock> m_master_clock; // 主时钟

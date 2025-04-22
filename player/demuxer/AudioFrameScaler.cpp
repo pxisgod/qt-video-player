@@ -111,7 +111,7 @@ int AudioFrameScaler::work_func()
         }
         render->append_samples(m_scale_buffer,scale_buffer_size,pts);
     }
-    m_frame_queue->remove_frame_2();
+    m_frame_queue->remove_frame_3();
     m_track->notify(); // 通知track
     return 0;
 }

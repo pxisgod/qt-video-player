@@ -202,7 +202,7 @@ typedef struct AudioSampleQueue
     void append_samples(std::shared_ptr<uint8_t> samples, int size, long pts)
     {
         std::lock_guard<std::mutex> lock(mutex);
-        this->pts_time = ((pts * av_q2d(time_base)) +size/ channel_count / sample_size) *1000;
+        this->pts_time = ((pts * av_q2d(time_base)) +size/ channel_count / sample_size/sample_rate) *1000;
         for (int i = 0; i < size; i++)
         {
             sample_queue[w_index] = samples.get()[i];
@@ -220,7 +220,7 @@ typedef struct AudioSampleQueue
         return sample_queue[r_index];
     };
     void rollback(){
-        r_index=(r_index-channel_count*sample_size+MAX_AUDIO_QUEUE_SIZE)/MAX_AUDIO_QUEUE_SIZE;
+        r_index=(r_index-channel_count*sample_size+MAX_AUDIO_QUEUE_SIZE)%MAX_AUDIO_QUEUE_SIZE;
     }
     void clear()
     {
@@ -247,7 +247,7 @@ typedef struct AudioSampleQueue
 
     long get_length()
     {
-        return (w_index - r_index + MAX_AUDIO_QUEUE_SIZE) % MAX_AUDIO_QUEUE_SIZE/(channel_count*sample_size)*(channel_count*sample_size);
+        return (w_index - r_index + MAX_AUDIO_QUEUE_SIZE) % MAX_AUDIO_QUEUE_SIZE/(channel_count*sample_size);
     };
 } AudioSampleQueue;
 

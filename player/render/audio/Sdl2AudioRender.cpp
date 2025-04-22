@@ -15,11 +15,11 @@ void Sdl2AudioRender::Init()
             //qDebug( "Could not initialize SDL - %s", SDL_GetError());
             break;
         }
-        m_audioSpec.freq = AUDIO_DST_SAMPLE_RATE;
+        m_audioSpec.freq = AUDIO_DST_SAMPLE_RATE1;
         m_audioSpec.format = AUDIO_S16SYS;
-        m_audioSpec.channels = AUDIO_DST_CHANNEL_COUNTS;
+        m_audioSpec.channels = AUDIO_DST_CHANNEL_COUNTS1;
         m_audioSpec.silence = 0;
-        m_audioSpec.samples = ACC_NB_SAMPLES;
+        m_audioSpec.samples = ACC_NB_SAMPLES1;
         m_audioSpec.callback = nullptr; // 因为是推模式，所以这里为 nullptr
                                         // 打开音频设备
         if ((m_deviceId = SDL_OpenAudioDevice(nullptr, 0, &m_audioSpec, nullptr, SDL_AUDIO_ALLOW_ANY_CHANGE)) < 2)

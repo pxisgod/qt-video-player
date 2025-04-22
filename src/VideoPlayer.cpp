@@ -1,6 +1,8 @@
 #include "VideoPlayer.h"
 #include "SDLVideoRender.h"
+#include "SDLAudioRender.h"
 #include "VideoFrameScaler.h"
+#include "AudioFrameScaler.h"
 #include <QDebug>
 
 void VideoPlayer::setVideoOutput(QWidget *widget)
@@ -13,6 +15,8 @@ int VideoPlayer::play(const QString &file_path)
     int ret = -1;
     std::shared_ptr<SDLVideoRender> videoRender = std::make_shared<SDLVideoRender>(m_widget);
     VideoFrameScaler::set_thread_render(videoRender);
+    std::shared_ptr<SDLAudioRender> audioRender = std::make_shared<SDLAudioRender>();
+    AudioFrameScaler::set_thread_render(audioRender);
     if (m_demuxer->init_0(file_path.toStdString()) == 0)
     {
         m_demuxer->start_0();
@@ -38,7 +42,7 @@ int VideoPlayer::stop()
 
 int VideoPlayer::seek(qint64 position)
 {
-    return m_demuxer->seek_0(position);
+    return m_demuxer->seek_0(position*1000);//转换成毫秒
 }
 
 int VideoPlayer::resize(int width, int height)

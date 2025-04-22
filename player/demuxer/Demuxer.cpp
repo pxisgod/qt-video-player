@@ -153,6 +153,7 @@ int Demuxer::stop_0()
 
 bool Demuxer::pause_condition(int work_state)
 {
+    qDebug("Demuxer::pause_condition");
     return m_packet_queue0->is_full() || m_packet_queue1->is_full();
 }
 
@@ -187,22 +188,24 @@ void Demuxer::do_seek(long pts_time,long system_time)
     m_packet_queue0->clear();
     m_packet_queue1->clear();
     //设置文件读取位置
-    int64_t seek_target = static_cast<int64_t>(pts_time * 1000000); // 微秒
+    int64_t seek_target = static_cast<int64_t>(pts_time * 1000); // 微秒
     int64_t seek_min = INT64_MIN;
     int64_t seek_max = INT64_MAX;
     int ret = avformat_seek_file(m_av_format_context.get(), -1, seek_min, seek_target, seek_max, 0);
+    notify();
 }
 
 
 int Demuxer::work_func()
 {
+    qDebug("Demuxer::work_func");
+    std::lock_guard<std::mutex> lock(m_rsc_mutex); //获取资源锁
     AVPacket *packet = av_packet_alloc();
     std::shared_ptr<AVPacket> packet_ptr = std::shared_ptr<AVPacket>(
         packet, [](AVPacket *ptr)
         {
                 if(ptr!=nullptr)
                     av_packet_unref(ptr); });
-    std::lock_guard<std::mutex> lock(m_rsc_mutex); //获取资源锁
     int result = av_read_frame(m_av_format_context.get(), packet_ptr.get());
     if (result != 0)
     {
@@ -263,7 +266,7 @@ int Demuxer::create_track_list(long system_time)
     {
         switch (m_av_format_context->streams[i]->codecpar->codec_type)
         {
-
+        
         case AVMEDIA_TYPE_AUDIO:
             track = std::make_shared<Track>(i, demuxer, AVMEDIA_TYPE_AUDIO, m_packet_queue0);
             track->get_clock()->set_master_clock(m_clock);
@@ -278,7 +281,6 @@ int Demuxer::create_track_list(long system_time)
                 m_track_map.emplace(i, track);
             }
             break;
-
         case AVMEDIA_TYPE_VIDEO:
             track = std::make_shared<Track>(i, demuxer, AVMEDIA_TYPE_VIDEO, m_packet_queue1);
             track->get_clock()->set_master_clock(m_clock);
